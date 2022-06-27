@@ -6,7 +6,12 @@
 # March 2022 
 #=============================================================
 
-
+#TODO
+#add true Sgen, smsy and umsy to data output
+#polta of param scenarios
+#plot of Er scenarios
+#add estimation routines
+ 
 
 #install samsim 
 #remotes::install_github("Pacific-salmon-assess/samSim", force=TRUE)
@@ -43,15 +48,13 @@ corrmat <- read.csv("../data/samsimIFcoho/cohoCorrMat.csv", header=F)
 scenNames <- unique(simPar$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simPar$species),sep = "_"))
 
-
-
 ## First check to ensure that a single scenario can be run (only a small number
 # of trials necessary)
 plotscn <- TRUE
 p <- list()
 simData <- list()
 
-for(i in 1:8){#seq_len(nrow(simPar))){
+for(i in 1:11){#seq_len(nrow(simPar))){
 
   genericRecoverySim(simPar=simPar[i,], cuPar=cuPar, catchDat=NULL, srDat=srDat,
             variableCU=FALSE, ricPars=ricPars , larkPars=NULL,cuCustomCorrMat= corrmat,
@@ -61,7 +64,7 @@ for(i in 1:8){#seq_len(nrow(simPar))){
   #erCorrMat=NULL;uniqueProd=TRUE;uniqueSurv=FALSE
 
   simData[[i]] <- readRDS(here("example","SamSimOutputs","simData", simPar$nameOM[i],simPar$scenario[i],
-                         paste(simPar$nameOM[i],"CUsrDat.RData",sep="")))$srDatout
+                         paste(simPar$nameOM[i],"_", simPar$nameMP[i], "_", "CUsrDat.RData",sep="")))$srDatout
   
 
   if(plotscn ==TRUE){
@@ -105,6 +108,22 @@ ggsave(
       width = 12, height = 5
     )
   
+
+output<- readRDS(paste0("../example/SamSimOutputs/simData/", simPar$nameOM[1],"/",simPar$scenario[1],"/",
+                         simPar$nameOM[1],"CUsrDat.RData",sep=""))$srDatout
+  
+
+output1<-output[output$iteration==1,]
+
+output1<-cbind(output1[,1:3],stack(output1[,12:14]))
+
+ggplot(output1) +
+      geom_line(aes(x=year,y=values, col=as.factor(ind)))+
+      geom_point(aes(x=year,y=values, col=as.factor(ind)))+
+      theme_bw(14)+ 
+      facet_wrap(~CU, scales="free_y")+
+      scale_colour_viridis_d() +
+      labs(title = simPar$nameOM[i])
 
 estNames <- c("1_Stat", "2_Alpha_vary", "3_Beta_vary", "4_Alpha_Beta_vary")
   dlm_Out_stat <- dlm_Out_alpha <- dlm_Out_beta <- dlm_Out_alphabeta <- dlm_Out

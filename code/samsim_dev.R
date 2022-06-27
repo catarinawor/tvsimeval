@@ -9,6 +9,7 @@
 
 #or locally
 
+#setwd("C:\\Users\\worc\\Documents\\LRP\\samSim\\R")
 
 
 devtools::document()
