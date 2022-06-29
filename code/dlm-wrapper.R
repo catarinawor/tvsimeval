@@ -51,7 +51,7 @@ fitDLM <- function(data ,
   Sgen <- NULL
 
   # 1. create a dlm representation of a linear regression model
-  mod <- dlmModReg(data$spwn) # this specifies a linear model
+  mod <- dlmModReg(data$spwn) # this specifies a linear model                                                                                                          
 
   # 2. number of parameters used in the AICc calculation
   dlmPars=3
@@ -95,13 +95,13 @@ fitDLM <- function(data ,
   outsSmooth	<- dlmSmooth(outsFilter)
   
   # 9. grab parameters, their SEs and calculate AICc
-  alpha<- cbind(alpha,outsSmooth$s[-1,1,drop=FALSE])
-  beta<- cbind(beta,outsSmooth$s[-1,2,drop=FALSE])
+  alpha <- cbind(alpha,outsSmooth$s[-1,1,drop=FALSE])
+  beta <- cbind(beta,outsSmooth$s[-1,2,drop=FALSE])
 
   for(y in seq_along(alpha)){
     Smsy[y] <- (1 - gsl::lambert_W0(exp(1 - alpha[y]))) /-beta[y]
     Umsy[y] <- .5 * alpha[y] - 0.07 * alpha[y]^2
-    Sgen[y] <- sGenSolver(a=alpha[y],Smsy=Smsy[y], b=-beta[y])
+    Sgen[y] <- sGenSolverdlm(a=alpha[y],Smsy=Smsy[y], b=-beta[y])$fit
   }
 
   
@@ -118,7 +118,7 @@ fitDLM <- function(data ,
   message <- dlm_out$message
 
   # 10. output results
-  results <- cbind(data,alpha, beta,alpha_se,beta_se, alpha_filt, beta_filt, alpha_filt_se, beta_filt_se)
+  results <- cbind(data,alpha, beta,alpha_se,beta_se, alpha_filt, beta_filt, alpha_filt_se, beta_filt_se, Smsy, Umsy, Sgen)
 
   output <- list(results=results,AICc=AICc, BIC=BIC, sd.est= sd.est, convergence=convergence, message=message)
 
