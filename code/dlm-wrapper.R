@@ -110,7 +110,7 @@ fitDLM <- function(data ,
   beta_se <- sqrt(array(as.numeric(unlist(dlmSvd2var(outsSmooth$U.S, outsSmooth$D.S))), dim=c( 2, 2,length(lnRS)+1)))[2,2,-1]
 
   AICc	<- 2*lls + 2*dlmPars +(2*dlmPars*(dlmPars+1)/(length(data$rec)-dlmPars-1))
-  BIC <-BIC <- 2*lls + dlmPars*log((length(data$rec)))
+  BIC  <- 2*lls + dlmPars*log((length(data$rec)))
 
   #these are the sd for process and observarion error. 
   sd.est = sqrt(exp(dlm_out$par)) 
@@ -120,7 +120,7 @@ fitDLM <- function(data ,
   # 10. output results
   results <- cbind(data,alpha, beta,alpha_se,beta_se, alpha_filt, beta_filt, alpha_filt_se, beta_filt_se, Smsy, Umsy, Sgen)
 
-  output <- list(results=results,AICc=AICc, BIC=BIC, sd.est= sd.est, convergence=convergence, message=message)
+  output <- list(results=results,AICc=AICc, BIC=BIC, sd.est= sd.est, convergence=convergence, message=message, nll=lls)
 
 }
 
