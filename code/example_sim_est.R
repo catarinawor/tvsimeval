@@ -7,10 +7,8 @@
 #=============================================================
 
 #TODO
-#add true Sgen, smsy and umsy to data output
-#polta of param scenarios
-#plot of Er scenarios
-#add estimation routines
+
+#add estimation routines - in progress
  
 
 #install samsim 

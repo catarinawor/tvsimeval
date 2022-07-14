@@ -34,7 +34,7 @@ dyn.load(dynlib("TMB/Ricker_tva_Smax_ratiovar"))
 system(paste("cp stan/ricker_linear_varying_a.stan", paste0(cmdstan_path(),"/timevarmodels")))
 system(paste("cp stan/ricker_linear_varying_b.stan", paste0(cmdstan_path(),"/timevarmodels")))
 system(paste("cp stan/ricker_linear_varying_a_and_b.stan", paste0(cmdstan_path(),"/timevarmodels")))
-#system(paste("cp stan/ricker_linear_varying_a_GP.stan", paste0(cmdstan_path(),"/stanmodels")))
+system(paste("cp stan/ricker_linear_varying_a_GP.stan", paste0(cmdstan_path(),"/timevarmodels")))
 #system(paste("cp stan/ricker_linear_varying_b_GP.stan", paste0(cmdstan_path(),"/stanmodels")))
 #system(paste("cp stan/ricker_linear_varying_a_and_b_GP.stan", paste0(cmdstan_path(),"/stanmodels")))
 
@@ -84,11 +84,9 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
       #erCorrMat=NULL;uniqueProd=TRUE;uniqueSurv=FALSE
     }
     
-
     simData[[i]] <- readRDS(here(outDir,"SamSimOutputs","simData", simPar$nameOM[i],simPar$scenario[i],
                          paste(simPar$nameOM[i],"_", simPar$nameMP[i], "_", "CUsrDat.RData",sep="")))$srDatout
   
-    
     nyr <- max(unique(simData[[i]]$year))
 
     simData[[i]] <- simData[[i]] %>% 
@@ -189,10 +187,6 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
     
     stanRBbeta_loo <- list()
     
-    #stanRBbeta_AIC <- rep(NA,length=iteration)
-    #stanRBbeta_BIC <- rep(NA,length=iteration)
-    #stanRBbeta_nll <- rep(NA,length=iteration)
-    
     stanRBbeta_convergence_alpha <- rep(NA,length=iteration)
     stanRBbeta_convergence_beta <- matrix(NA,ncol=iteration,nrow=nobs)
     stanRBbeta_convergence_sigma <- rep(NA,length=iteration)
@@ -204,11 +198,58 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
     stanRBalphabeta_smsy <- matrix(NA,ncol=iteration,nrow=nobs)
     stanRBalphabeta_umsy <- matrix(NA,ncol=iteration,nrow=nobs)
     stanRBalphabeta_sgen <- matrix(NA,ncol=iteration,nrow=nobs)
+
+    stanRBalphabeta_loo <- list()
     
     stanRBalphabeta_convergence_alpha <- matrix(NA,ncol=iteration,nrow=nobs)
     stanRBalphabeta_convergence_beta <- matrix(NA,ncol=iteration,nrow=nobs)
     stanRBalphabeta_convergence_sigma <- rep(NA,length=iteration)
+
+    #Recursive Bayes alpha and beta vary  stan
+    stanGPalpha_alpha <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalpha_beta <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalpha_sigma <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalpha_smsy <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalpha_umsy <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalpha_sgen <- matrix(NA,ncol=iteration,nrow=nobs)
+
+    stanGPalpha_loo <- list()
     
+    #beta gaussian
+    stanGPbeta_convergence_alpha <- rep(NA,length=iteration)
+    stanGPbeta_convergence_beta <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPbeta_convergence_sigma <- rep(NA,length=iteration)
+
+    stanGPbeta_alpha <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPbeta_beta <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPbeta_sigma <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPbeta_smsy <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPbeta_umsy <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPbeta_sgen <- matrix(NA,ncol=iteration,nrow=nobs)
+
+    stanGPbeta_loo <- list()
+    
+    stanGPbeta_convergence_alpha <- rep(NA,length=iteration)
+    stanGPbeta_convergence_beta <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPbeta_convergence_sigma <- rep(NA,length=iteration)
+
+    #alpha beta gaussian
+    stanGPalphabeta_convergence_alpha <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_convergence_beta <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_convergence_sigma <- rep(NA,length=iteration)
+
+    stanGPalphabeta_alpha <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_beta <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_sigma <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_smsy <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_umsy <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_sgen <- matrix(NA,ncol=iteration,nrow=nobs)
+
+    stanGPalphabeta_loo <- list()
+    
+    stanGPalphabeta_convergence_alpha <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_convergence_beta <- matrix(NA,ncol=iteration,nrow=nobs)
+    stanGPalphabeta_convergence_sigma <- rep(NA,length=iteration)
 
     #n=1
     for( n in seq_len(iteration)){
@@ -456,6 +497,8 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
             adapt_delta = 0.99,
             max_treedepth = 20 # print update every 500 iters
           )
+
+        stanRBbeta_loo[[n]] <- fit2$loo(cores = 2)
         
         params2<- fit2$draws(format='df',variables=c('log_a','b','log_b','sigma_b','sigma_e'))
         parssummary2<-summary(params2)
@@ -512,6 +555,8 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
             adapt_delta = 0.99,
             max_treedepth = 20 # print update every 500 iters
           )
+
+        stanRBalphabeta_loo[[n]] <- fit3$loo(cores = 2)
         
         params3<- fit3$draws(format='df',variables=c('log_a','b','log_b','sigma_b','sigma_e'))
         parssummary3<-summary(params3)
@@ -530,9 +575,9 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
         Sgenstanrb <- matrix(NA, nrow=nrow(logastanrba), ncol=ncol(logastanrba))
         
         for(j in 1:ncol(Smsystanrb)){
-          Smsystanrb[,j] <- (1 - gsl::lambert_W0(exp(1 - params2$log_a )))/logastanrb[[j]]
-          Sgenstanrb[,j] <- unlist(mapply(sGenSolverdlm,a=params2$log_a,
-             Smsy=Smsystanrb[,j], b=logastanrb[[j]]))
+          Smsystanrb[,j] <- (1 - gsl::lambert_W0(exp(1 - logastanrba[[j]])))/logastanrbb[[j]]
+          Sgenstanrb[,j] <- unlist(mapply(sGenSolverdlm,a=logastanrba[[j]],
+             Smsy=Smsystanrb[,j], b=logastanrbb[[j]]))
         }
     
         stanRBalphabeta_umsy[,n] <- apply(umsystanrb,2,median)
@@ -549,9 +594,124 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
         print(paste("stan RB b failed in iteration",n))
       })
 
+      #Gaussian process stan - a, b and and b vary
+      tryCatch({
+
+        fileGP1 <- file.path(cmdstan_path(),'timevarmodels',"ricker_linear_varying_a_GP.stan")
+
+        modGP1 <- cmdstan_model(fileGP1)
+        #mcmc
+        fitGP1<- modGP1$sample(
+            data =list(N=nrow(dat),
+                      TT=as.numeric(factor(seq_len(nrow(dat)))),
+                      R_S = log(dat$rec/dat$spwn),
+                      S=c(dat$spwn)),
+            seed = 123, 
+            chains = 6, 
+            parallel_chains = 6,
+            iter_warmup = 500,
+            iter_sampling = 2000,
+            refresh = 500,
+            adapt_delta = 0.99,
+            max_treedepth = 20 # print update every 500 iters
+          )
+        
+        stanGPalpha_loo[[n]] <- fitGP1$loo(cores = 2)
+        paramsGP1<- fitGP1$draws(format='df',variables=c('log_a','b','log_b','sigma_e'))
+        parssummaryGP1<-summary(paramsGP1)
+        
+        stanGPalpha_alpha[,n] <- parssummaryGP1[grep("log_a",parssummaryGP1$variable),]$median
+        stanGPalpha_beta[,n] <- rep(parssummaryGP1[grep("^b",parssummaryGP1$variable),]$median, nrow(dat))
+        stanGPalpha_sigma[,n] <- rep(parssummaryGP1[parssummaryGP1$variable=="sigma_e",]$median, nrow(dat))
+
+        #params_stan_rb<-rstan::extract(stan_rb)
+        
+        logastangpa <- paramsGP1[,grep("log_a",names(paramsGP1))]
+        umsystangp <- .5 *  logastangpa - 0.07 * ( logastangpa)^2
+         
+        Smsystangp <- matrix(NA, nrow=nrow(logastangpa), ncol=ncol(logastangpa))
+        Sgenstangp <- matrix(NA, nrow=nrow(logastangpa), ncol=ncol(logastangpa))
+        
+        for(j in 1:ncol(Smsystangp)){
+          Smsystangp[,j] <- (1 - gsl::lambert_W0(exp(1 - logastangpa[[j]] )))/paramsGP1$b
+          Sgenstangp[,j] <- unlist(mapply(sGenSolverdlm,a=logastangpa[[j]],
+             Smsy=Smsystangp[,j], b=paramsGP1$b))
+        }
+    
+        stanGPalpha_umsy[,n] <- apply(umsystangp,2,median)
+        stanGPalpha_smsy[,n] <- apply(Smsystangp,2,median)
+        stanGPalpha_sgen[,n] <- apply(Sgenstangp,2,median)
+
+      
+        stanGPalpha_convergence_alpha[,n] <- as.numeric(abs(parssummaryGP1[grep("log_a",parssummaryGP1$variable),]$rhat-1)>.1)       
+        stanGPalpha_convergence_beta[n] <- as.numeric(abs(parssummaryGP1[grep("^b",parssummaryGP1$variable),]$rhat-1)>.1)
+        stanGPalpha_convergence_sigma[n] <- as.numeric(abs(parssummaryGP1[parssummaryGP1$variable=="sigma_e",]$rhat-1)>.1)
+   
+        
+      },  error = function(e) {
+        print(paste("stan RB b failed in iteration",n))
+      })
+
+      tryCatch({
+
+        fileGP2 <- file.path(cmdstan_path(),'timevarmodels',"ricker_linear_varying_b_GP.stan")
+
+        modGP2 <- cmdstan_model(fileGP2)
+        #mcmc
+        fitGP2<- modGP2$sample(
+            data =list(N=nrow(dat),
+                      TT=as.numeric(factor(seq_len(nrow(dat)))),
+                      R_S = log(dat$rec/dat$spwn),
+                      S=c(dat$spwn)),
+            seed = 123, 
+            chains = 6, 
+            parallel_chains = 6,
+            iter_warmup = 500,
+            iter_sampling = 2000,
+            refresh = 500,
+            adapt_delta = 0.99,
+            max_treedepth = 20 # print update every 500 iters
+          )
+        
+        stanGPbeta_loo[[n]] <- fitGP2$loo(cores = 2)
+        paramsGP2<- fitGP2$draws(format='df',variables=c('log_a','b','log_b','sigma_e'))
+        parssummaryGP2<-summary(paramsGP2)
+        
+        stanGPbeta_alpha[,n] <- parssummaryGP2[grep("log_a",parssummaryGP2$variable),]$median
+        stanGPbeta_beta[,n] <- rep(parssummaryGP2[grep("^b",parssummaryGP2$variable),]$median, nrow(dat))
+        stanGPbeta_sigma[,n] <- rep(parssummaryGP2[parssummaryGP2$variable=="sigma_e",]$median, nrow(dat))
+
+        #params_stan_rb<-rstan::extract(stan_rb)
+        
+        logastangpa <- paramsGP1[,grep("log_a",names(paramsGP1))]
+        umsystangp <- .5 *  logastangpa - 0.07 * ( logastangpa)^2
+         
+        Smsystangp <- matrix(NA, nrow=nrow(logastangpa), ncol=ncol(logastangpa))
+        Sgenstangp <- matrix(NA, nrow=nrow(logastangpa), ncol=ncol(logastangpa))
+        
+        for(j in 1:ncol(Smsystangp)){
+          Smsystangp[,j] <- (1 - gsl::lambert_W0(exp(1 - logastangpa[[j]] )))/paramsGP1$b
+          Sgenstangp[,j] <- unlist(mapply(sGenSolverdlm,a=logastangpa[[j]],
+             Smsy=Smsystangp[,j], b=paramsGP1$b))
+        }
+    
+        stanGPalpha_umsy[,n] <- apply(umsystangp,2,median)
+        stanGPalpha_smsy[,n] <- apply(Smsystangp,2,median)
+        stanGPalpha_sgen[,n] <- apply(Sgenstangp,2,median)
+
+      
+        stanGPalpha_convergence_alpha[,n] <- as.numeric(abs(parssummaryGP1[grep("log_a",parssummaryGP1$variable),]$rhat-1)>.1)       
+        stanGPalpha_convergence_beta[n] <- as.numeric(abs(parssummaryGP1[grep("^b",parssummaryGP1$variable),]$rhat-1)>.1)
+        stanGPalpha_convergence_sigma[n] <- as.numeric(abs(parssummaryGP1[parssummaryGP1$variable=="sigma_e",]$rhat-1)>.1)
+   
+        
+      },  error = function(e) {
+        print(paste("stan RB b failed in iteration",n))
+      })
+
+
 
       #need to add
-      #Gaussian process stan - a, b and and b vary
       #HM regime shift model jags a,b and and and b
       #HM regime shift stan  a,b and and and b
 
@@ -623,9 +783,7 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
       smsy=stanRBalpha_smsy,
       umsy=stanRBalpha_umsy,
       sgen=stanRBalpha_sgen,
-      
-      #AIC=tmbRB_AIC,
-      #BIC=tmbRB_BIC,
+      loo=stanRBalpha_loo,
       convergence_alpha= stanRBalpha_convergence_alpha,
       convergence_beta= stanRBalpha_convergence_beta,
       convergence_sigma= stanRBalpha_convergence_sigma
@@ -637,12 +795,63 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
                         smsy=stanRBbeta_smsy,
                         umsy=stanRBbeta_umsy,
                         sgen=stanRBbeta_sgen,
+                        loo=stanRBbeta_loo,
                         
-                        #AIC=tmbRB_AIC,
-                        #BIC=tmbRB_BIC,
                         convergence_alpha= stanRBbeta_convergence_alpha,
                         convergence_beta= stanRBbeta_convergence_beta,
                         convergence_sigma= stanRBbeta_convergence_sigma
+    )
+
+    stanRBalphabeta <- list(alpha= stanRBalphabeta_alpha,
+                        beta= stanRBalphabeta_beta,
+                        sigma=stanRBalphabeta_sigma,
+                        smsy=stanRBalphabeta_smsy,
+                        umsy=stanRBalphabeta_umsy,
+                        sgen=stanRBalphabeta_sgen,
+                        loo=stanRBalphabeta_loo,
+                        
+                        convergence_alpha= stanRBalphabeta_convergence_alpha,
+                        convergence_beta= stanRBalphabeta_convergence_beta,
+                        convergence_sigma= stanRBalphabeta_convergence_sigma
+    )
+
+    stanGPalpha <- list(alpha= stanGPalpha_alpha,
+                        beta= stanGPalpha_beta,
+                        sigma=stanGPalpha_sigma,
+                        smsy=stanGPalpha_smsy,
+                        umsy=stanGPalpha_umsy,
+                        sgen=stanGPalpha_sgen,
+                        loo=stanGPalpha_loo,
+                        
+                        convergence_alpha= stanGPalpha_convergence_alpha,
+                        convergence_beta= stanGPalpha_convergence_beta,
+                        convergence_sigma= stanGPalpha_convergence_sigma
+    )
+
+    stanGPbeta <- list(alpha= stanGPbeta_alpha,
+                        beta= stanGPbeta_beta,
+                        sigma=stanGPbeta_sigma,
+                        smsy=stanGPbeta_smsy,
+                        umsy=stanGPbeta_umsy,
+                        sgen=stanGPbeta_sgen,
+                        loo=stanGPbeta_loo,
+                        
+                        convergence_alpha= stanGPbeta_convergence_alpha,
+                        convergence_beta= stanGPbeta_convergence_beta,
+                        convergence_sigma= stanGPbeta_convergence_sigma
+    )
+
+    stanGPalphabeta <- list(alpha= stanGPalphabeta_alpha,
+                        beta= stanGPalphabeta_beta,
+                        sigma=stanGPalphabeta_sigma,
+                        smsy=stanGPalphabeta_smsy,
+                        umsy=stanGPalphabeta_umsy,
+                        sgen=stanGPalphabeta_sgen,
+                        loo=stanGPalphabeta_loo,
+                        
+                        convergence_alpha= stanGPalphabeta_convergence_alpha,
+                        convergence_beta= stanGPalphabeta_convergence_beta,
+                        convergence_sigma= stanGPalphabeta_convergence_sigma
     )
 
     
@@ -653,7 +862,8 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
       tmbKF=tmbKF,
       tmbRB=tmbRB,
       stanRBalpha=stanRBalpha,
-      stanRBbeta=stanRBbeta)
+      stanRBbeta=stanRBbeta,
+      stanRBalphabeta=stanRBalphabeta)
   }
 
 
