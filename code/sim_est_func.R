@@ -680,29 +680,28 @@ sim_est <- function(simPar, cuPar, srDat, ricPars, corrmat, outDir, iteration, s
         stanGPbeta_alpha[,n] <- parssummaryGP2[grep("log_a",parssummaryGP2$variable),]$median
         stanGPbeta_beta[,n] <- rep(parssummaryGP2[grep("^b",parssummaryGP2$variable),]$median, nrow(dat))
         stanGPbeta_sigma[,n] <- rep(parssummaryGP2[parssummaryGP2$variable=="sigma_e",]$median, nrow(dat))
-
+        #parei aqui
         #params_stan_rb<-rstan::extract(stan_rb)
         
-        logastangpa <- paramsGP1[,grep("log_a",names(paramsGP1))]
-        umsystangp <- .5 *  logastangpa - 0.07 * ( logastangpa)^2
-         
-        Smsystangp <- matrix(NA, nrow=nrow(logastangpa), ncol=ncol(logastangpa))
-        Sgenstangp <- matrix(NA, nrow=nrow(logastangpa), ncol=ncol(logastangpa))
-        
-        for(j in 1:ncol(Smsystangp)){
-          Smsystangp[,j] <- (1 - gsl::lambert_W0(exp(1 - logastangpa[[j]] )))/paramsGP1$b
-          Sgenstangp[,j] <- unlist(mapply(sGenSolverdlm,a=logastangpa[[j]],
-             Smsy=Smsystangp[,j], b=paramsGP1$b))
-        }
+        #logastangpb <- paramsG2[,grep("^b",names(paramsGP2))]
+        #umsystangp <- .5 *  logastangpa - 0.07 * ( logastangpa)^2
+        # 
+        #Smsystangp <- matrix(NA, nrow=nrow(logastangpa), ncol=ncol(logastangpa))
+        #Sgenstangp <- matrix(NA, nrow=nrow(logastangpa), ncol=ncol(logastangpa))
+        #
+        #for(j in 1:ncol(Smsystangp)){
+        #  Smsystangp[,j] <- (1 - gsl::lambert_W0(exp(1 - logastangpa[[j]] )))/paramsGP1$b
+        #  Sgenstangp[,j] <- unlist(mapply(sGenSolverdlm,a=logastangpa[[j]],
+        #     Smsy=Smsystangp[,j], b=paramsGP1$b))
+        #}
     
-        stanGPalpha_umsy[,n] <- apply(umsystangp,2,median)
-        stanGPalpha_smsy[,n] <- apply(Smsystangp,2,median)
-        stanGPalpha_sgen[,n] <- apply(Sgenstangp,2,median)
-
-      
-        stanGPalpha_convergence_alpha[,n] <- as.numeric(abs(parssummaryGP1[grep("log_a",parssummaryGP1$variable),]$rhat-1)>.1)       
-        stanGPalpha_convergence_beta[n] <- as.numeric(abs(parssummaryGP1[grep("^b",parssummaryGP1$variable),]$rhat-1)>.1)
-        stanGPalpha_convergence_sigma[n] <- as.numeric(abs(parssummaryGP1[parssummaryGP1$variable=="sigma_e",]$rhat-1)>.1)
+        #stanGPalpha_umsy[,n] <- apply(umsystangp,2,median)
+        #stanGPalpha_smsy[,n] <- apply(Smsystangp,2,median)
+        #stanGPalpha_sgen[,n] <- apply(Sgenstangp,2,median)
+     
+        #stanGPalpha_convergence_alpha[,n] <- as.numeric(abs(parssummaryGP1[grep("log_a",parssummaryGP1$variable),]$rhat-1)>.1)       
+        #stanGPalpha_convergence_beta[n] <- as.numeric(abs(parssummaryGP1[grep("^b",parssummaryGP1$variable),]$rhat-1)>.1)
+        #stanGPalpha_convergence_sigma[n] <- as.numeric(abs(parssummaryGP1[parssummaryGP1$variable=="sigma_e",]$rhat-1)>.1)
    
         
       },  error = function(e) {
