@@ -7,15 +7,17 @@
 #=============================================================
 
 #TODO
-#add true Sgen, smsy and umsy to data output
-#polta of param scenarios
-#plot of Er scenarios
 #add estimation routines
- 
+#
 
 #install samsim 
-#remotes::install_github("Pacific-salmon-assess/samSim", force=TRUE)
+#remotes::install_github("Pacific-salmon-assess/samSim", ref="timevar", force=TRUE)
 
+#install samest
+#remotes::install_git('https://github.com/Pacific-salmon-assess/samEst')
+
+library(samEst)
+library(samSim)
 library(ggplot2)
 library(devtools)
 library(gridExtra)
@@ -53,6 +55,158 @@ dirNames <- sapply(scenNames, function(x) paste(x, unique(simPar$species),sep = 
 plotscn <- TRUE
 p <- list()
 simData <- list()
+
+
+
+genericRecoverySim(simPar=simPar[1,], cuPar=cuPar, catchDat=NULL, srDat=srDat,
+            variableCU=FALSE, ricPars=ricPars , larkPars=NULL,cuCustomCorrMat= corrmat,
+            outDir="test", nTrials=2, makeSubDirs=TRUE, random=FALSE)
+
+simData <- readRDS(here("test","SamSimOutputs","simData", simPar$nameOM[1],simPar$scenario[1],
+                         paste(simPar$nameOM[1],"_", simPar$nameMP[1], "_", "CUsrDat.RData",sep="")))$srDatout
+  
+
+simData<-simData[simData$CU==1,]
+
+lfodf<-matrix(NA,nrow=length(unique(simData$iteration)),ncol=14,
+  dimnames = list(unique(simData$iteration),
+    c("simple", "autocorr", "rwa_lastparam","rwa_last3paramavg","rwa_last5paramavg",
+      "rwb_lastparam","rwb_last3paramavg","rwb_last5paramavg",
+      "hmm_regime_pick","hmm_regime_average","hmma_regime_pick",
+      "hmma_regime_average","hmmb_regime_pick","hmmb_regime_average")))
+
+for(u in unique(simData$iteration)){
+
+  dat<-simData[simData$iteration==u,]
+  dat <- dat[!is.na(dat$obsRecruits),]
+  df <- data.frame(by=dat$year,
+                  S=dat$obsSpawners,
+                  R=dat$obsRecruits,
+                  logRS=log(dat$obsRecruits/dat$obsSpawners))
+ 
+
+  p<-rickerTMB(data=df)
+  pac<-rickerTMB(data=df, AC=TRUE)
+  ptva <- ricker_rwa_TMB(data=df)
+  ptvb <- ricker_rwb_TMB(data=df)
+  ptvab <- ricker_rwab_TMB(data=df)
+  phmma<-ricker_HMM_TMB_a(data=df)
+  phmmb<-ricker_HMM_TMB_b(data=df)
+  phmm <- ricker_HMM_TMB(data=df)
+
+  #a
+   dfa<- data.frame(parameter="alpha",
+    iteration=u,
+    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
+      "hmmb_regime","hmmab_regime","hmmab_average"),each=nrow(df)),
+    by=rep(dat$year,10),
+    sim=rep(dat$alpha,10),
+    est=c(rep(p$alpha,nrow(df)),rep(pac$alpha,nrow(df)),
+      ptva$alpha,rep(ptvb$alpha,nrow(df)),ptvab$alpha,
+      phmma$alpha[phmma$regime],c(phmma$alpha%*%phmma$probregime),
+      rep(phmmb$alpha,nrow(df)),
+      phmm$alpha[phmm$regime],phmm$alpha%*%phmm$probregime))
+
+  #b
+   dfb<- data.frame(parameter="beta",
+    iteration=u,
+    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime",
+      "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average"),each=nrow(df)),
+    by=rep(dat$year,10),
+    sim=rep(dat$beta,10),
+    est=c(rep(p$beta,nrow(df)),rep(pac$beta,nrow(df)),
+      rep(ptva$beta,nrow(df)),ptvb$beta,ptvab$beta,
+      rep(phmma$beta,nrow(df)),
+      phmmb$beta[phmmb$regime],phmmb$beta%*%phmmb$probregime,
+      phmm$beta[phmm$regime],phmm$beta%*%phmm$probregime))
+
+  #sigma
+
+   dfsig<- data.frame(parameter="sigma",
+    iteration=u,
+    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime",
+      "hmmb_regime","hmmab_regime"),each=nrow(df)),
+    by=rep(dat$year,8),
+    sim=rep(dat$sigma,8),
+    est=c(rep(p$sig,nrow(df)),rep(pac$sig,nrow(df)),
+      rep(ptva$sig,nrow(df)),rep(ptvb$sig,nrow(df)),
+      rep(ptvab$sig,nrow(df)),rep(phmma$sigma,nrow(df)),
+      rep(phmmb$sigma,nrow(df)),rep(phmm$sigma,nrow(df))))
+       
+  #Smsy
+  dfsmsy<- data.frame(parameter="sigma",
+    iteration=u,
+    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
+      "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average"),each=nrow(df)),
+    by=rep(dat$year,11),
+    sim=rep(dat$sigma,11),
+    est=c(rep((1 - gsl::lambert_W0(exp(1 - p$alpha))) /p$beta,nrow(df)),
+          rep((1 - gsl::lambert_W0(exp(1 - pac$alpha))) /pac$beta,nrow(df)),
+          (1 - gsl::lambert_W0(exp(1 - ptva$alpha))) /ptva$beta,
+          (1 - gsl::lambert_W0(exp(1 - ptvb$alpha))) /ptvb$beta,
+          (1 - gsl::lambert_W0(exp(1 - ptvab$alpha))) /ptvab$beta,
+          (1 - gsl::lambert_W0(exp(1 - phmma$alpha[phmma$regime]))) /phmma$beta,
+          (1 - gsl::lambert_W0(exp(1 - c(phmma$alpha%*%phmma$probregime)))) /phmma$beta,
+          (1 - gsl::lambert_W0(exp(1 - phmmb$alpha))) /phmmb$beta[phmmb$regime],
+          (1 - gsl::lambert_W0(exp(1 - phmmb$alpha))) /phmmb$beta%*%phmmb$probregime,
+          (1 - gsl::lambert_W0(exp(1 - phmm$alpha[phmm$regime]))) /phmm$beta[phmm$regime],
+          (1 - gsl::lambert_W0(exp(1 - c(phmm$alpha%*%phmm$probregime)))) /c(phmm$beta%*%phmm$probregime)))
+  
+
+  #Sgen
+
+  #umsy
+    dfumsy<- data.frame(parameter="sigma",
+    iteration=u,
+    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
+      "hmmb_regime","hmmab_regime","hmmab_average"),each=nrow(df)),
+    by=rep(dat$year,10),
+    sim=rep(dat$sigma,10),
+    est=c(rep(.5 * p$alpha - 0.07 * p$alpha^2,nrow(df)),
+          rep(.5 * pac$alpha - 0.07 * pac$alpha^2,nrow(df)),
+          .5 * ptva$alpha - 0.07 * ptva$alpha^2,
+          rep(.5 * ptvb$alpha - 0.07 * ptvb$alpha^2,nrow(df)),
+          .5 * ptvab$alpha - 0.07 * ptvab$alpha^2,
+          .5 * phmma$alpha[phmma$regime] - 0.07 * phmma$alpha[phmma$regime]^2,
+          .5 * c(phmma$alpha%*%phmma$probregime) - 0.07 * c(phmma$alpha%*%phmma$probregime)^2,
+          rep(.5 * phmmb$alpha - 0.07 * phmmb$alpha^2,nrow(df)),
+          .5 * phmm$alpha[phmm$regime] - 0.07 * phmm$alpha[phmm$regime]^2,
+          .5 * c(phmm$alpha%*%phmm$probregime) - 0.07 * c(phmm$alpha%*%phmm$probregime)^2)
+    )
+  
+
+  #=======================
+  #lfo comparison
+  lfostatic<-tmb_mod_lfo_cv(data=df,tv.par='static')
+  lfoac <- tmb_mod_lfo_cv(data=df,tv.par='staticAC')
+  lfoalpha <- tmb_mod_lfo_cv(data=df,tv.par='alpha', siglfo="obs")
+  lfobeta <- tmb_mod_lfo_cv(data=df,tv.par='beta', siglfo="obs")
+  lfohmm <- tmb_mod_lfo_cv(data=df,tv.par='HMM')
+  lfohmma <- tmb_mod_lfo_cv(data=df,tv.par='HMM_a')
+  lfohmmb <- tmb_mod_lfo_cv(data=df,tv.par='HMM_b')
+
+  lfodf[u,] <- c(sum(lfostatic), sum(lfoac), 
+    sum(lfoalpha$lastparam), sum(lfoalpha$last3paramavg), sum(lfoalpha$last5paramavg), 
+    sum(lfobeta$lastparam), sum(lfobeta$last3paramavg), sum(lfobeta$last5paramavg),
+    sum(lfohmm$regime_pick),sum(lfohmm$regime_average),
+    sum(lfohmma$regime_pick),sum(lfohmma$regime_average),
+    sum(lfohmmb$regime_pick),sum(lfohmmb$regime_average))
+
+
+}
+
+  
+apply(lfodf,1,which.max)
+
+}
+
+
+
+
+
+
+
+
 
 for(i in 1:11){#seq_len(nrow(simPar))){
 

@@ -14,13 +14,18 @@
 
 devtools::document()
 devtools::load_all()
-devtools::build()
+#devtools::build()
 
 #detach("package:samSim", unload=TRUE)
 #devtools::build(pkg = "C:/Users/worc/Documents/LRP/samSim/.")
-devtools::install_local("C:/Users/worc/Documents/LRP/samSim_0.0.0.9.tar.gz")
+#devtools::install_local("C:/Users/worc/Documents/LRP/samSim_0.0.0.9.tar.gz")
 
-library(samSim)
+#library(samSim)
 ?simParexample
-?batata
+
 ?synchList
+
+
+usethis::use_data(cuParexample,  internal = TRUE)
+
+
