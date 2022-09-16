@@ -1,12 +1,12 @@
 #=======================================================
-#Sgen functions adapted from samSim
+#Sgen functions adapted from samSim for vectors of parameters
 #
 #
 #=======================================================
 
 
 
-Sgencomputedlm <- function(S, a,b, Smsy ) {
+Sgencompute <- function(S, a,b, Smsy ) {
 	#modified from samsim sGenOptimSmsyum
   
   prt <- S * exp(a - b * S)
@@ -18,10 +18,10 @@ Sgencomputedlm <- function(S, a,b, Smsy ) {
 
 
 
-sGenSolverdlm <- function(a,b, Smsy) {
+sGenSolver <- function(a,b, Smsy) {
   #gives the min Ricker log-likelihood
   if(a>0){
-    fnSGen <- function(S, a, b, Smsy) -1.0 * Sgencomputedlm(S, a, b, Smsy)$nSS
+    fnSGen <- function(S, a, b, Smsy) -1.0 * Sgencompute(S, a, b, Smsy)$nSS
     fit <- optimize(f = fnSGen, interval = c(0, ((a / b) * (0.5 - 0.07 * a))),
                  a=a,b=b, Smsy = Smsy)
   }else{
