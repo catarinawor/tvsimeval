@@ -59,9 +59,6 @@ p <- list()
 simData <- list()
 
 
-
-
-
 genericRecoverySim(simPar=simPar[1,], cuPar=cuPar, catchDat=NULL, srDat=NULL,
             variableCU=FALSE, ricPars=NULL , larkPars=NULL,cuCustomCorrMat= NULL,
             outDir="test", nTrials=100, makeSubDirs=TRUE, random=FALSE)
@@ -84,7 +81,7 @@ rmse<-list()
 
 
 for(u in unique(simData$iteration)){
-
+  #u=1
   dat<-simData[simData$iteration==u,]
   dat<-dat[dat$year>(max(dat$year)-46),]
 
@@ -96,148 +93,77 @@ for(u in unique(simData$iteration)){
                   logRS=log(dat$obsRecruits/dat$obsSpawners))
  
 
-  p <- ricker_TMB(data=df)
-  pac <- ricker_TMB(data=df, AC=TRUE)
-  ptva <- ricker_rw_TMB(data=df,tv.par='a')
-  ptvb <- ricker_rw_TMB(data=df, tv.par='b')
-  ptvab <- ricker_rw_TMB(data=df, tv.par='both')
-  phmma <- ricker_hmm_TMB(data=df, tv.par='a')
-  phmmb <- ricker_hmm_TMB(data=df, tv.par='b')
-  phmm  <- ricker_hmm_TMB(data=df, tv.par='both')
-
-  b<-rickerstan(data=df,iter = 2000)
+  p<-ricker_TMB(data=df)
+  #p[1:5]
+  pnp<-ricker_TMB(data=df, prior=0)
+  #pnp[1:5]
   
 
-  
+  b<-ricker_stan(data=df,iter = 2000)  
 
   #a
    dfa<- data.frame(parameter="alpha",
     iteration=u,
-    method=rep(c(rep("MLE",10),rep("MCMC",1)),each=nrow(df)),
-    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
-      "hmmb_regime","hmmab_regime","hmmab_average","simple_b"),each=nrow(df)),
-    by=rep(dat$year,11),
-    sim=rep(dat$alpha,11),
-    est=c(rep(p$alpha,nrow(df)),rep(pac$alpha,nrow(df)),
-      ptva$alpha,rep(ptvb$alpha,nrow(df)),ptvab$alpha,
-      phmma$alpha[phmma$regime],c(phmma$alpha%*%phmma$probregime),
-      rep(phmmb$alpha,nrow(df)),
-      phmm$alpha[phmm$regime],phmm$alpha%*%phmm$probregime,
-      rep(b$alpha,nrow(df))),
-     convergence=rep(c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+    method=c(rep("MLE",2),rep("MCMC",1)),
+    model=c("simple","simple_noprior","simple_bayes"),
+    sim=rep(dat$alpha[nrow(dat)],3),
+    est=c(p$alpha,pnp$alpha,b$alpha),
+     convergence=c(p$model$convergence,
+      pnp$model$convergence,
       as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1)
-      ),each=nrow(df)))
+      ))
    dfa$pbias<- ((dfa$est-dfa$sim)/dfa$sim)*100
    
    rmsea<-aggregate((dfa$est-dfa$sim)^2, list(model=dfa$model,method=dfa$method), function(x)sqrt(mean(x)))
    rmsea$iteration<-u
    rmsea$parameter<-"alpha"
    rmsea$convergence <- c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+      pnp$model$convergence,
       as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1)
       )
   
 
 
   #b
-   dfb<- data.frame(parameter="beta",
+  dfb<- data.frame(parameter="beta",
     iteration=u,
-    method=rep(c(rep("MLE",10),rep("MCMC",1)),each=nrow(df)),
-    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime",
-      "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average","simple_b"),each=nrow(df)),
-    by=rep(dat$year,11),
-    sim=rep(dat$beta,11),
-    est=c(rep(p$beta,nrow(df)),rep(pac$beta,nrow(df)),
-      rep(ptva$beta,nrow(df)),ptvb$beta,ptvab$beta,
-      rep(phmma$beta,nrow(df)),
-      phmmb$beta[phmmb$regime],phmmb$beta%*%phmmb$probregime,
-      phmm$beta[phmm$regime],phmm$beta%*%phmm$probregime,
-      rep(b$beta,nrow(df))),
-     convergence=rep(c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
-      as.numeric(abs(b$mcmcsummary["b","Rhat"]-1)>.1)
-      ),each=nrow(df)))
+    method=c(rep("MLE",2),rep("MCMC",1)),
+    model=c("simple","simple_noprior","simple_bayes"),
+    sim=rep(dat$beta[nrow(dat)],3),
+    est=c(p$beta, pnp$beta, b$beta),
+    convergence=c(p$model$convergence,
+      pnp$model$convergence,
+      as.numeric(abs(b$mcmcsummary["b","Rhat"]-1)>.1))
+      )
    dfb$pbias<- ((dfb$est-dfb$sim)/dfb$sim)*100
 
    rmseb<-aggregate((dfb$est-dfb$sim)^2, list(model=dfb$model,method=dfb$method), function(x)sqrt(mean(x)))
    rmseb$iteration<-u
    rmseb$parameter<-"beta"
    rmseb$convergence <- c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+      pnp$model$convergence,
       as.numeric(abs(b$mcmcsummary["b","Rhat"]-1)>.1)
       )
   
 
   #sigma
-
    dfsig<- data.frame(parameter="sigma",
     iteration=u,
-    method=rep(c(rep("MLE",8),rep("MCMC",1)),each=nrow(df)),
-    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime",
-      "hmmb_regime","hmmab_regime","simple_b"),each=nrow(df)),
-    by=rep(dat$year,9),
-    sim=rep(dat$sigma,9),
-    est=c(rep(p$sig,nrow(df)),rep(pac$sig,nrow(df)),
-      rep(ptva$sig,nrow(df)),rep(ptvb$sig,nrow(df)),
-      rep(ptvab$sig,nrow(df)),rep(phmma$sigma,nrow(df)),
-      rep(phmmb$sigma,nrow(df)),rep(phmm$sigma,nrow(df)),
-      rep(b$sigobs,nrow(df))),
-     convergence=rep(c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
+    method=c(rep("MLE",2),rep("MCMC",1)),
+    model=c("simple","simple_noprior","simple_bayes"),
+    sim=rep(dat$sigma[nrow(dat)],3),
+    est=c(p$sig, pnp$sig, b$sigobs),
+    convergence=c(p$model$convergence,
+      pnp$model$convergence,
       as.numeric(abs(b$mcmcsummary["sigma_e","Rhat"]-1)>.1)
-      ),each=nrow(df)))
+      ))
    dfsig$pbias<- ((dfsig$est-dfsig$sim)/dfsig$sim)*100
 
    rmsesig<-aggregate((dfsig$est-dfsig$sim)^2, list(model=dfsig$model,method=dfsig$method), function(x)sqrt(mean(x)))
    rmsesig$iteration<-u
    rmsesig$parameter<-"sigma"
    rmsesig$convergence <- c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
+      pnp$model$convergence,
       as.numeric(abs(b$mcmcsummary["sigma_e","Rhat"]-1)>.1)
       )
   
@@ -248,37 +174,17 @@ for(u in unique(simData$iteration)){
  
   dfsmsy<- data.frame(parameter="smsy",
     iteration=u,
-    method=rep(c(rep("MLE",11),rep("MCMC",1)),each=nrow(df)),
-    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
-      "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average","simple_b"),each=nrow(df)),
-    by=rep(dat$year,12),
-    sim=rep(smsysim,12),
-    est=c(rep((1 - gsl::lambert_W0(exp(1 - p$alpha))) /p$beta,nrow(df)),
-          rep((1 - gsl::lambert_W0(exp(1 - pac$alpha))) /pac$beta,nrow(df)),
-          (1 - gsl::lambert_W0(exp(1 - ptva$alpha))) /ptva$beta,
-          (1 - gsl::lambert_W0(exp(1 - ptvb$alpha))) /ptvb$beta,
-          (1 - gsl::lambert_W0(exp(1 - ptvab$alpha))) /ptvab$beta,
-          (1 - gsl::lambert_W0(exp(1 - phmma$alpha[phmma$regime]))) /phmma$beta,
-          (1 - gsl::lambert_W0(exp(1 - c(phmma$alpha%*%phmma$probregime)))) /phmma$beta,
-          (1 - gsl::lambert_W0(exp(1 - phmmb$alpha))) /phmmb$beta[phmmb$regime],
-          (1 - gsl::lambert_W0(exp(1 - phmmb$alpha))) /phmmb$beta%*%phmmb$probregime,
-          (1 - gsl::lambert_W0(exp(1 - phmm$alpha[phmm$regime]))) /phmm$beta[phmm$regime],
-          (1 - gsl::lambert_W0(exp(1 - c(phmm$alpha%*%phmm$probregime)))) /c(phmm$beta%*%phmm$probregime),
-          rep((1 - gsl::lambert_W0(exp(1 - b$alpha))) /b$beta,nrow(df))),
-     convergence=rep(c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+    method=c(rep("MLE",2),rep("MCMC",1)),
+    model=c("simple","simple_noprior","simple_bayes"),
+    sim=rep(smsysim[nrow(dat)],3),
+    est=c((1 - gsl::lambert_W0(exp(1 - p$alpha))) /p$beta,
+          (1 - gsl::lambert_W0(exp(1 - pnp$alpha))) /pnp$beta,
+         (1 - gsl::lambert_W0(exp(1 - b$alpha))) /b$beta),
+     convergence=c(p$model$convergence,
+      pnp$model$convergence,
       sum(as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1),
           as.numeric(abs(b$mcmcsummary["log_b","Rhat"]-1)>.1))
-      ),each=nrow(df)))
+      ))
   
   dfsmsy$pbias<- ((dfsmsy$est-dfsmsy$sim)/dfsmsy$sim)*100
 
@@ -286,16 +192,7 @@ for(u in unique(simData$iteration)){
   rmsesmsy$iteration<-u
   rmsesmsy$parameter<-"smsy"
   rmsesmsy$convergence <- c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+      pnp$model$convergence,     
       sum(as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1),
           as.numeric(abs(b$mcmcsummary["log_b","Rhat"]-1)>.1))
       )
@@ -305,54 +202,25 @@ for(u in unique(simData$iteration)){
   #Sgen
   dfsgen<-data.frame(parameter="sgen",
     iteration=u,
-    method=rep(c(rep("MLE",11),rep("MCMC",1)),each=nrow(df)),
-    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
-      "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average","simple_b"),each=nrow(df)),
-    by=rep(dat$year,12),
-    sim=rep(unlist(mapply(sGenSolver,a=dat$alpha,Smsy=smsysim, b=dat$beta)),12),
+    method=c(rep("MLE",2),rep("MCMC",1)),
+    model=c("simple","simple_noprior","simple_bayes"),
+    sim=unlist(mapply(sGenSolver,a=dat$alpha,Smsy=smsysim, b=dat$beta))[nrow(dat)],
     est=c(unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple"],Smsy=dfsmsy$est[dfsmsy$model=="simple"], b=dfb$est[dfb$model=="simple"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="autocorr"],Smsy=dfsmsy$est[dfsmsy$model=="autocorr"], b=dfb$est[dfb$model=="autocorr"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwa"],Smsy=dfsmsy$est[dfsmsy$model=="rwa"], b=dfb$est[dfb$model=="rwa"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwb"],Smsy=dfsmsy$est[dfsmsy$model=="rwb"], b=dfb$est[dfb$model=="rwb"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwab"],Smsy=dfsmsy$est[dfsmsy$model=="rwab"], b=dfb$est[dfb$model=="rwab"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmma_regime"], b=dfb$est[dfb$model=="hmma_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_average"],Smsy=dfsmsy$est[dfsmsy$model=="hmma_average"], b=dfb$est[dfb$model=="hmma_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmb_regime"], b=dfb$est[dfb$model=="hmmb_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmb_average"], b=dfb$est[dfb$model=="hmmb_average"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmab_regime"], b=dfb$est[dfb$model=="hmmab_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_average"],Smsy=dfsmsy$est[dfsmsy$model=="hmmab_average"], b=dfb$est[dfb$model=="hmmab_average"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple_b"],Smsy=dfsmsy$est[dfsmsy$model=="simple_b"], b=dfb$est[dfb$model=="simple_b"]))
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple_noprior"],Smsy=dfsmsy$est[dfsmsy$model=="simple_noprior"], b=dfb$est[dfb$model=="simple_noprior"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple_bayes"],Smsy=dfsmsy$est[dfsmsy$model=="simple_bayes"], b=dfb$est[dfb$model=="simple_bayes"]))
         ),
-     convergence=rep(c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+     convergence=c(p$model$convergence,
+      pnp$model$convergence,
       sum(as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1),
           as.numeric(abs(b$mcmcsummary["log_b","Rhat"]-1)>.1))
-      ),each=nrow(df)))
+      ))
    dfsgen$pbias<- ((dfsgen$est-dfsgen$sim)/dfsgen$sim)*100
 
    rmsesgen<-aggregate((dfsgen$est-dfsgen$sim)^2, list(model=dfsgen$model,method=dfsgen$method), function(x)sqrt(mean(x)))
    rmsesgen$iteration<-u
    rmsesgen$parameter<-"sgen"
    rmsesgen$convergence <- c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+      pnp$model$convergence,      
       sum(as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1),
           as.numeric(abs(b$mcmcsummary["log_b","Rhat"]-1)>.1))
       )
@@ -363,44 +231,16 @@ for(u in unique(simData$iteration)){
 
     dfumsy<- data.frame(parameter="umsy",
     iteration=u,
-    method=rep(c(rep("MLE",10),rep("MCMC",1)),each=nrow(df)),
-    model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
-      "hmmb_regime","hmmab_regime","hmmab_average","simple_b"),each=nrow(df)),
-    by=rep(dat$year,11),
-    sim=rep((.5 * dat$alpha - 0.07 * dat$alpha^2),11),
-    est=c(rep((1 - gsl::lambert_W0(exp(1 - p$alpha))), nrow(df)),
-          rep((1 - gsl::lambert_W0(exp(1 - pac$alpha))), nrow(df)),
-          (1 - gsl::lambert_W0(exp(1 - ptva$alpha))),
-          rep((1 - gsl::lambert_W0(exp(1 - ptvb$alpha))), nrow(df)),
-          (1 - gsl::lambert_W0(exp(1 - ptvab$alpha))),
-          (1 - gsl::lambert_W0(exp(1 - phmma$alpha[phmma$regime]))),
-          (1 - gsl::lambert_W0(exp(1 - c(phmma$alpha%*%phmma$probregime)))),
-          rep((1 - gsl::lambert_W0(exp(1 - phmmb$alpha))), nrow(df)),
-          (1 - gsl::lambert_W0(exp(1 - phmm$alpha[phmm$regime]))),
-          (1 - gsl::lambert_W0(exp(1 - c(phmm$alpha%*%phmm$probregime)))),
-          rep((1 - gsl::lambert_W0(exp(1 - b$alpha))),nrow(df))),
-    #c(rep(.5 * p$alpha - 0.07 * p$alpha^2,nrow(df)),
-    #      rep(.5 * pac$alpha - 0.07 * pac$alpha^2,nrow(df)),
-    #      .5 * ptva$alpha - 0.07 * ptva$alpha^2,
-    #      rep(.5 * ptvb$alpha - 0.07 * ptvb$alpha^2,nrow(df)),
-    #      .5 * ptvab$alpha - 0.07 * ptvab$alpha^2,
-    #      .5 * phmma$alpha[phmma$regime] - 0.07 * phmma$alpha[phmma$regime]^2,
-    #      .5 * c(phmma$alpha%*%phmma$probregime) - 0.07 * c(phmma$alpha%*%phmma$probregime)^2,
-    #      rep(.5 * phmmb$alpha - 0.07 * phmmb$alpha^2,nrow(df)),
-    #      .5 * phmm$alpha[phmm$regime] - 0.07 * phmm$alpha[phmm$regime]^2,
-    #      .5 * c(phmm$alpha%*%phmm$probregime) - 0.07 * c(phmm$alpha%*%phmm$probregime)^2),
-     convergence=rep(c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+    method=c(rep("MLE",2),rep("MCMC",1)),
+    model=c("simple","simple_noprior","simple_bayes"),
+    sim=rep((.5 * dat$alpha - 0.07 * dat$alpha^2)[nrow(dat)],3),
+    est=c((1 - gsl::lambert_W0(exp(1 - p$alpha))),
+          (1 - gsl::lambert_W0(exp(1 - pnp$alpha))),
+         (1 - gsl::lambert_W0(exp(1 - b$alpha)))),
+    convergence=c(p$model$convergence,
+      pnp$model$convergence,
       as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1)
-      ),each=nrow(df))
+      )
     )
 
     dfumsy$pbias<- ((dfumsy$est-dfumsy$sim)/dfumsy$sim)*100
@@ -409,15 +249,7 @@ for(u in unique(simData$iteration)){
     rmseumsy$iteration<-u
     rmseumsy$parameter<-"umsy"
     rmseumsy$convergence <- c(p$model$convergence,
-      pac$model$convergence,
-      ptva$model$convergence,
-      ptvb$model$convergence,
-      ptvab$model$convergence,
-      phmma$model$convergence,
-      phmma$model$convergence,
-      phmmb$model$convergence,
-      phmm$model$convergence,
-      phmm$model$convergence,
+      pnp$model$convergence,
       as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1)
       )
   
