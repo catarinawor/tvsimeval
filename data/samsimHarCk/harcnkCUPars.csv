@@ -1,0 +1,2 @@
+manUnit,stkName,stk,model,minER,cvER,usERScalar,canERScalar,tauCycAge,alpha,beta0,sigma,coef1,covarInit,mu_logCovar1,sig_logCovar1,min_logCovar,max_logCovar,aveGenTime,ageFirstRec,ageMaxRec,larkAlpha,larkBeta0,larkBeta1,larkBeta2,larkBeta3,larkSigma,meanRec2,meanRec3,meanRec4,meanRec5,meanRec6,medianRec,lowQRec,highQRec,meanDBE,sdDBE,medMA,meanForecast,sdForecast
+Fall41,Harrison,1,ricker,0.005,0.228,1,1,1.1,1.042511,5.81E-06,0.591941816,0,0.011907944,-4.430549557,0.601011559,-5.914504,-2.701571,4,2,5,NA,NA,NA,NA,NA,NA,0,0.2,0.6,0.2,0,5019,4349,5562,NA,NA,NA,NA,NA
