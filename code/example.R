@@ -57,10 +57,6 @@ plotscn <- TRUE
 p <- list()
 simData <- list()
 
-
-
-
-
 genericRecoverySim(simPar=simPar[1,], cuPar=cuPar, catchDat=NULL, srDat=NULL,
             variableCU=FALSE, ricPars=NULL , larkPars=NULL,cuCustomCorrMat= NULL,
             outDir="test", nTrials=100, makeSubDirs=TRUE, random=FALSE)
@@ -80,6 +76,17 @@ lfodf<-matrix(NA,nrow=length(unique(simData$iteration)),ncol=14,
 
 simest<-list()
 rmse<-list()
+
+#compiled Bayesian models
+simple_mod <- sr_mod(type='static', ac=FALSE, par='n', loglik=FALSE, modelcode=TRUE)
+simpleac_mod <- sr_mod(type='static', ac=TRUE, par='n', loglik=FALSE, modelcode=TRUE)
+rwa_mod <- sr_mod(type='rw',ac=FALSE,par="a",loglik=FALSE, modelcode=TRUE)
+rwb_mod <- sr_mod(type='rw',ac=FALSE,par="b",loglik=FALSE, modelcode=TRUE)
+rwab_mod <- sr_mod(type='rw',ac=FALSE,par="both",loglik=FALSE, modelcode=TRUE)
+hmma_mod<-sr_mod(type='hmm',ac=FALSE,par="a",loglik=FALSE, modelcode=TRUE)
+hmmb_mod<-sr_mod(type='hmm',ac=FALSE,par="b",loglik=FALSE, modelcode=TRUE)
+hmmab_mod<-sr_mod(type='hmm',ac=FALSE,par="both",loglik=FALSE, modelcode=TRUE)
+
 
 
 for(u in unique(simData$iteration)){
@@ -103,33 +110,34 @@ for(u in unique(simData$iteration)){
   phmmb <- ricker_hmm_TMB(data=df, tv.par='b')
   phmm  <- ricker_hmm_TMB(data=df, tv.par='both')
 
-  b <- ricker_stan(data=df,iter = 2000)
+  b <- ricker_stan(data=df,iter = 2000,sm_ext=simple_mod)
   #ricker autocorr
-  bac <- ricker_stan(data=df,iter = 2000, AC=TRUE)
+  bac <- ricker_stan(data=df,iter = 2000, AC=TRUE, sm_ext=simpleac_mod)
   #ricker tva
-  btva <- ricker_rw_stan(data=df, par="a",iter = 2000)
+  btva <- ricker_rw_stan(data=df, par="a",iter = 2000, sm_ext=rwa_mod)
   #ricker tvb
-  btvb <- ricker_rw_stan(data=df, par="b",iter = 2000)
+  btvb <- ricker_rw_stan(data=df, par="b",iter = 2000, sm_ext=rwb_mod)
   #ricker tvab
-  btvab <- ricker_rw_stan(data=df, par="both",iter = 2000)
+  btvab <- ricker_rw_stan(data=df, par="both",iter = 2000, sm_ext=rwab_mod)
   
   #ricker tvhmma
-  #bhmma <- ricker_hmm_stan(data=df, par="a",iter = 2000)
+  bhmma <- ricker_hmm_stan(data=df, par="a",iter = 2000, sm_ext=hmma_mod)
   #ricker tvhmmb
-  #bhmmb <- ricker_hmm_stan(data=df, par="b",iter = 2000)
+  bhmmb <- ricker_hmm_stan(data=df, par="b",iter = 2000, sm_ext=hmmb_mod)
   #ricker tvhmmab
-  #bhmmb <- ricker_hmm_stan(data=df, par="both",iter = 2000)
-  
+  bhmmab <- ricker_hmm_stan(data=df, par="both",iter = 2000, sm_ext=hmmab_mod)
+  bhmmab[1:7]
   names(btvab)
   #a
   dfa<- data.frame(parameter="alpha",
     iteration=u,
-    method=rep(c(rep("MLE",10),rep("MCMC",5)),each=nrow(df)),
+    method=rep(c(rep("MLE",10),rep("MCMC",10)),each=nrow(df)),
     model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
-      "hmmb_regime","hmmab_regime","hmmab_average","simple_b","autocorr_b",
-      "rwa_b","rwb_b","rwab_b"),each=nrow(df)),
-    by=rep(dat$year,15),
-    sim=rep(dat$alpha,15),
+      "hmmb_regime","hmmab_regime","hmmab_average","simple","autocorr",
+      "rwa","rwb","rwab","hmma_regime","hmma_average",
+      "hmmb_regime","hmmab_regime","hmmab_average"),each=nrow(df)),
+    by=rep(dat$year,20),
+    sim=rep(dat$alpha,20),
     est=c(rep(p$alpha,nrow(df)),
       rep(pac$alpha,nrow(df)),
       ptva$alpha,
@@ -144,7 +152,12 @@ for(u in unique(simData$iteration)){
       rep(bac$alpha,nrow(df)),
       btva$alpha[-1],
       rep(btvb$alpha,nrow(df)),
-      btvab$alpha[-1]
+      btvab$alpha[-1],
+      bhmma$alpha_regime,
+      bhmma$alpha_wgt,
+      rep(bhmmb$alpha,nrow(df)),
+      bhmmab$alpha_regime,
+      bhmmab$alpha_wgt
       ),
      convergence=c(rep(c(p$model$convergence + p$conv_problem,
       pac$model$convergence + pac$conv_problem,
@@ -161,7 +174,12 @@ for(u in unique(simData$iteration)){
       ),each=nrow(df)),
      as.numeric(abs(btva$mcmcsummary[grep("log_a\\[",rownames(btva$mcmcsummary)),"Rhat"]-1)>.1),
      rep(as.numeric(abs(btvb$mcmcsummary[grep("log_a",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1),nrow(df)),
-     as.numeric(abs(btvab$mcmcsummary[grep("log_a\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)
+     as.numeric(abs(btvab$mcmcsummary[grep("log_a\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1),
+     as.numeric(abs(bhmma$mcmcsummary[grep("log_a_t\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1),
+     as.numeric(abs(bhmma$mcmcsummary[grep("log_a_wt\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1),
+     rep(as.numeric(abs(bhmmb$mcmcsummary[grep("log_a",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1),nrow(df)),
+     as.numeric(abs(bhmmab$mcmcsummary[grep("log_a_t\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1),
+     as.numeric(abs(bhmmab$mcmcsummary[grep("log_a_wt\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)
      ))
    dfa$pbias<- ((dfa$est-dfa$sim)/dfa$sim)*100
    
@@ -182,7 +200,12 @@ for(u in unique(simData$iteration)){
       as.numeric(abs(bac$mcmcsummary["log_a","Rhat"]-1)>.1),
       sum(as.numeric(abs(btva$mcmcsummary[grep("log_a\\[",rownames(btva$mcmcsummary)),"Rhat"]-1)>.1)),
       as.numeric(abs(btvb$mcmcsummary[grep("log_a",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1),
-      sum(as.numeric(abs(btvab$mcmcsummary[grep("log_a\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1))
+      sum(as.numeric(abs(btvab$mcmcsummary[grep("log_a\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmma$mcmcsummary[grep("log_a_t\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmma$mcmcsummary[grep("log_a_wt\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1)),
+      as.numeric(abs(bhmmb$mcmcsummary[grep("log_a",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1),
+      sum(as.numeric(abs(bhmmab$mcmcsummary[grep("log_a_t\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmab$mcmcsummary[grep("log_a_wt\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1))  
       )
   
 
@@ -190,12 +213,13 @@ for(u in unique(simData$iteration)){
   #Smax
    dfsmax<- data.frame(parameter="Smax",
     iteration=u,
-    method=rep(c(rep("MLE",10),rep("MCMC",5)),each=nrow(df)),
+    method=rep(c(rep("MLE",10),rep("MCMC",10)),each=nrow(df)),
     model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime",
       "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average",
-      "simple_b","autocorr","rwa_b","rwb_b","rwab_b"),each=nrow(df)),
-    by=rep(dat$year,15),
-    sim=rep(1/dat$beta,15),
+      "simple","autocorr","rwa","rwb","rwab","hmma_regime",
+      "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average"),each=nrow(df)),
+    by=rep(dat$year,20),
+    sim=rep(1/dat$beta,20),
     est=c(rep(p$Smax,nrow(df)),
       rep(pac$Smax,nrow(df)),
       rep(ptva$Smax,nrow(df)),
@@ -210,7 +234,12 @@ for(u in unique(simData$iteration)){
       rep(bac$Smax,nrow(df)),
       rep(btva$Smax,nrow(df)),
       btvb$Smax,
-      btvab$Smax ),
+      btvab$Smax, 
+      rep(bhmma$Smax,nrow(df)),
+      bhmmb$Smax_regime,
+      bhmmb$Smax_wgt,
+      bhmmab$Smax_regime,
+      bhmmab$Smax_wgt),
      convergence=c(rep(c(p$model$convergence + p$conv_problem,
       pac$model$convergence + pac$conv_problem,
       ptva$model$convergence + ptva$conv_problem,
@@ -226,15 +255,20 @@ for(u in unique(simData$iteration)){
       as.numeric(abs(btva$mcmcsummary["S_max","Rhat"]-1)>.1)
       ),each=nrow(df)),
       as.numeric(abs(btvb$mcmcsummary[grep("S_max",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1),
-      as.numeric(abs(btvab$mcmcsummary[grep("S_max",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1))     
+      as.numeric(abs(btvab$mcmcsummary[grep("S_max",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1),     
+      rep(as.numeric(abs(bhmma$mcmcsummary[grep("S_max",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1),nrow(df)),
+      as.numeric(abs(bhmmb$mcmcsummary[grep("S_max_t\\[",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmmb$mcmcsummary[grep("S_max_wt\\[",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmmab$mcmcsummary[grep("S_max_t\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmmab$mcmcsummary[grep("S_max_wt\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1))
       )
    dfsmax$pbias<- ((dfsmax$est-dfsmax$sim)/dfsmax$sim)*100
 
    rmsesmax<-aggregate((dfsmax$est-dfsmax$sim)^2, 
     list(model=dfsmax$model,method=dfsmax$method), function(x)sqrt(mean(x)))
-   rmseb$iteration<-u
-   rmseb$parameter<-"Smax"
-   rmseb$convergence <- c(p$model$convergence + p$conv_problem,
+   rmsesmax$iteration<-u
+   rmsesmax$parameter<-"Smax"
+   rmsesmax$convergence <- c(p$model$convergence + p$conv_problem,
       pac$model$convergence + pac$conv_problem,
       ptva$model$convergence + ptva$conv_problem,
       ptvb$model$convergence + ptvb$conv_problem,
@@ -248,20 +282,25 @@ for(u in unique(simData$iteration)){
       as.numeric(abs(bac$mcmcsummary["S_max","Rhat"]-1)>.1),
       as.numeric(abs(btva$mcmcsummary["S_max","Rhat"]-1)>.1),
       sum(as.numeric(abs(btvb$mcmcsummary[grep("S_max",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1)),
-      sum(as.numeric(abs(btvab$mcmcsummary[grep("S_max",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)))     
+      sum(as.numeric(abs(btvab$mcmcsummary[grep("S_max",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)),
+      as.numeric(abs(bhmma$mcmcsummary[grep("S_max",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1),
+      sum(as.numeric(abs(bhmmb$mcmcsummary[grep("S_max_t\\[",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmb$mcmcsummary[grep("S_max_wt\\[",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmab$mcmcsummary[grep("S_max_t\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmab$mcmcsummary[grep("S_max_wt\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)))
+          
       
-      )
-  
+      
 
   #sigma
-
    dfsig<- data.frame(parameter="sigma",
     iteration=u,
-    method=rep(c(rep("MLE",8),rep("MCMC",5)),each=nrow(df)),
+    method=rep(c(rep("MLE",8),rep("MCMC",8)),each=nrow(df)),
     model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime",
-      "hmmb_regime","hmmab_regime","simple_b","autocorr_b","rwa_b","rwb_b","rwab_b"),each=nrow(df)),
-    by=rep(dat$year,13),
-    sim=rep(dat$sigma,13),
+      "hmmb_regime","hmmab_regime","simple","autocorr","rwa","rwb","rwab",
+      "hmma_regime","hmmb_regime","hmmab_regime"),each=nrow(df)),
+    by=rep(dat$year,16),
+    sim=rep(dat$sigma,16),
     est=c(rep(p$sig,nrow(df)),
       rep(pac$sig,nrow(df)),
       rep(ptva$sig,nrow(df)),
@@ -274,7 +313,10 @@ for(u in unique(simData$iteration)){
       rep(bac$sigobs,nrow(df)),
       rep(btva$sigobs,nrow(df)),
       rep(btvb$sigobs,nrow(df)),
-      rep(btvab$sigobs,nrow(df))),
+      rep(btvab$sigobs,nrow(df)),
+      rep(bhmma$sigobs,nrow(df)),
+      rep(bhmmb$sigobs,nrow(df)),
+      rep(bhmmab$sigobs,nrow(df))),
      convergence=rep(c(p$model$convergence + p$conv_problem,
       pac$model$convergence + pac$conv_problem,
       ptva$model$convergence + ptva$conv_problem,
@@ -287,7 +329,10 @@ for(u in unique(simData$iteration)){
       as.numeric(abs(bac$mcmcsummary["sigma_e","Rhat"]-1)>.1),
       as.numeric(abs(btva$mcmcsummary["sigma_e","Rhat"]-1)>.1),
       as.numeric(abs(btvb$mcmcsummary["sigma_e","Rhat"]-1)>.1),
-      as.numeric(abs(btvab$mcmcsummary["sigma_e","Rhat"]-1)>.1)
+      as.numeric(abs(btvab$mcmcsummary["sigma_e","Rhat"]-1)>.1),
+      as.numeric(abs(bhmma$mcmcsummary["sigma","Rhat"]-1)>.1),
+      as.numeric(abs(bhmmb$mcmcsummary["sigma","Rhat"]-1)>.1),
+      as.numeric(abs(bhmmab$mcmcsummary["sigma","Rhat"]-1)>.1)
       ),each=nrow(df)))
    dfsig$pbias<- ((dfsig$est-dfsig$sim)/dfsig$sim)*100
 
@@ -306,7 +351,10 @@ for(u in unique(simData$iteration)){
       as.numeric(abs(bac$mcmcsummary["sigma_e","Rhat"]-1)>.1),
       as.numeric(abs(btva$mcmcsummary["sigma_e","Rhat"]-1)>.1),
       as.numeric(abs(btvb$mcmcsummary["sigma_e","Rhat"]-1)>.1),
-      as.numeric(abs(btvab$mcmcsummary["sigma_e","Rhat"]-1)>.1)
+      as.numeric(abs(btvab$mcmcsummary["sigma_e","Rhat"]-1)>.1),
+      as.numeric(abs(bhmma$mcmcsummary["sigma","Rhat"]-1)>.1),
+      as.numeric(abs(bhmmb$mcmcsummary["sigma","Rhat"]-1)>.1),
+      as.numeric(abs(bhmmab$mcmcsummary["sigma","Rhat"]-1)>.1)
       )
   
  
@@ -411,20 +459,11 @@ for(u in unique(simData$iteration)){
     betatvb <- btvb$samples[grep(paste0("^b\\[",j,"\\]"),btvb$samples$parameters),]
     smsytvb<-btvb$samples[grep(paste0("S_msy\\[",j,"\\]"),btvb$samples$parameters),]
 
-    length(btvb$samples[btvb$samples$parameters=="log_a","value"])
-    length(betatvb$value)
-        length(smsytvb$value)
-  
-    head(betatvb )
-
-    hist(betatvb$value[betatvb$chains=="chain:2"])
-
     sgen_tvb[j]<-median(unlist(mapply(sGenSolver,a=btvb$samples[btvb$samples$parameters=="log_a","value"],
       b=betatvb$value,Smsy=smsytvb$value)))
 
     
-    #tvab
-    
+    #tvab    
     atvab<-btvab$samples[grep(paste0("log_a\\[",j,"\\]"),btvab$samples$parameters),]
     betatvab<-btvab$samples[grep(paste0("^b\\[",j,"\\]"),btvab$samples$parameters),]
     smsytvab<-btvab$samples[grep(paste0("S_msy\\[",j,"\\]"),btvab$samples$parameters),]
@@ -440,7 +479,7 @@ for(u in unique(simData$iteration)){
 
 
 
-  dfsgen<-data.frame(parameter="sgen",
+  dfsgen <- data.frame(parameter="sgen",
     iteration=u,
     method=rep(c(rep("MLE",11),rep("MCMC",5)),each=nrow(df)),
     model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
@@ -448,24 +487,24 @@ for(u in unique(simData$iteration)){
       "simple_b","autocorr_b","rwa_b","rwb_b","rwab_b"),each=nrow(df)),
     by=rep(dat$year,16),
     sim=rep(unlist(mapply(sGenSolver,a=dat$alpha,Smsy=smsysim, b=dat$beta)),12),
-    est=c(unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple"],Smsy=dfsmsy$est[dfsmsy$model=="simple"], b=dfb$est[dfb$model=="simple"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="autocorr"],Smsy=dfsmsy$est[dfsmsy$model=="autocorr"], b=dfb$est[dfb$model=="autocorr"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwa"],Smsy=dfsmsy$est[dfsmsy$model=="rwa"], b=dfb$est[dfb$model=="rwa"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwb"],Smsy=dfsmsy$est[dfsmsy$model=="rwb"], b=dfb$est[dfb$model=="rwb"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwab"],Smsy=dfsmsy$est[dfsmsy$model=="rwab"], b=dfb$est[dfb$model=="rwab"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmma_regime"], b=dfb$est[dfb$model=="hmma_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_average"],Smsy=dfsmsy$est[dfsmsy$model=="hmma_average"], b=dfb$est[dfb$model=="hmma_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmb_regime"], b=dfb$est[dfb$model=="hmmb_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmb_average"], b=dfb$est[dfb$model=="hmmb_average"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmab_regime"], b=dfb$est[dfb$model=="hmmab_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_average"],Smsy=dfsmsy$est[dfsmsy$model=="hmmab_average"], b=dfb$est[dfb$model=="hmmab_average"])),
+    est=c(unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple"],Smsy=dfsmsy$est[dfsmsy$model=="simple"], b=1/dfsmax$est[dfsmax$model=="simple"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="autocorr"],Smsy=dfsmsy$est[dfsmsy$model=="autocorr"], b=1/dfsmax$est[dfsmax$model=="autocorr"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwa"],Smsy=dfsmsy$est[dfsmsy$model=="rwa"], b=1/dfsmax$est[dfsmax$model=="rwa"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwb"],Smsy=dfsmsy$est[dfsmsy$model=="rwb"], b=1/dfsmax$est[dfsmax$model=="rwb"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwab"],Smsy=dfsmsy$est[dfsmsy$model=="rwab"], b=1/dfsmax$est[dfsmax$model=="rwab"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmma_regime"], b=1/dfsmax$est[dfsmax$model=="hmma_regime"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_average"],Smsy=dfsmsy$est[dfsmsy$model=="hmma_average"], b=1/dfsmax$est[dfsmax$model=="hmma_regime"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmb_regime"], b=1/dfsmax$est[dfsmax$model=="hmmb_regime"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmb_average"], b=1/dfsmax$est[dfsmax$model=="hmmb_average"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmab_regime"], b=1/dfsmax$est[dfsmax$model=="hmmab_regime"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_average"],Smsy=dfsmsy$est[dfsmsy$model=="hmmab_average"], b=1/dfsmax$est[dfsmax$model=="hmmab_average"])),
         sgen_b,
         sgen_bac,
         sgen_tva,
         sgen_tvb,
         sgen_tvab
         ),
-     convergence=rep(c(p$model$convergence + p$conv_problem,
+     convergence=c(rep(c(p$model$convergence + p$conv_problem,
       pac$model$convergence + pac$conv_problem,
       ptva$model$convergence + ptvab$conv_problem,
       ptvb$model$convergence + ptvab$conv_problem,
@@ -479,15 +518,16 @@ for(u in unique(simData$iteration)){
       sum(as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1),
           as.numeric(abs(b$mcmcsummary["b","Rhat"]-1)>.1)),
       sum(as.numeric(abs(bac$mcmcsummary["log_a","Rhat"]-1)>.1),
-          as.numeric(abs(bac$mcmcsummary["b","Rhat"]-1)>.1)),
-      sum(as.numeric(abs(btva$mcmcsummary["log_a","Rhat"]-1)>.1),
+          as.numeric(abs(bac$mcmcsummary["b","Rhat"]-1)>.1)))
+      ,each=nrow(df)),
+      (as.numeric(abs(btva$mcmcsummary[grep("log_a\\[",rownames(btva$mcmcsummary)),"Rhat"]-1)>.1)+
           as.numeric(abs(btva$mcmcsummary["b","Rhat"]-1)>.1)),
-      sum(as.numeric(abs(btvb$mcmcsummary["log_a","Rhat"]-1)>.1),
-          as.numeric(abs(btvb$mcmcsummary["b","Rhat"]-1)>.1)),
-      sum(as.numeric(abs(btvab$mcmcsummary["log_a","Rhat"]-1)>.1),
-          as.numeric(abs(btvab$mcmcsummary["b","Rhat"]-1)>.1))
-      ),each=nrow(df)))
-   dfsgen$pbias<- ((dfsgen$est-dfsgen$sim)/dfsgen$sim)*100
+      (as.numeric(abs(btvb$mcmcsummary["log_a","Rhat"]-1)>.1)+
+          as.numeric(abs(btvb$mcmcsummary[grep("^b\\[",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1)),
+      (as.numeric(abs(btvab$mcmcsummary[grep("log_a\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)+
+          as.numeric(abs(btvab$mcmcsummary[grep("^b\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1))))
+
+   
 
    rmsesgen<-aggregate((dfsgen$est-dfsgen$sim)^2, list(model=dfsgen$model,method=dfsgen$method), function(x)sqrt(mean(x)))
    rmsesgen$iteration<-u
