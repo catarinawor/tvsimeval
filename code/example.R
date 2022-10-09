@@ -365,12 +365,13 @@ for(u in unique(simData$iteration)){
  
   dfsmsy<- data.frame(parameter="smsy",
     iteration=u,
-    method=rep(c(rep("MLE",11),rep("MCMC",5)),each=nrow(df)),
+    method=rep(c(rep("MLE",11),rep("MCMC",11)),each=nrow(df)),
     model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
       "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average",
-      "simple_b", "autocorr_b", "rwa_b","rwb_b","rwab_b"),each=nrow(df)),
-    by=rep(dat$year,16),
-    sim=rep(smsysim,16),
+      "simple", "autocorr", "rwa","rwb","rwab","hmma_regime","hmma_average",
+      "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average"),each=nrow(df)),
+    by=rep(dat$year,22),
+    sim=rep(smsysim,22),
     est=c(rep(p$Smsy,nrow(df)),
           rep(pac$Smsy,nrow(df)),
           ptva$Smsy,
@@ -386,7 +387,13 @@ for(u in unique(simData$iteration)){
           rep(bac$Smsy,nrow(df)),
           btva$Smsy,
           btvb$Smsy,
-          btvab$Smsy
+          btvab$Smsy,
+          bhmma$Smsy_regime,
+          bhmma$Smsy_wgt,
+          bhmmb$Smsy_regime,
+          bhmmb$Smsy_wgt,
+          bhmmab$Smsy_regime,
+          bhmmab$Smsy_wgt
           ),    
      convergence=c(rep(c(p$model$convergence + p$conv_problem,
       pac$model$convergence + pac$conv_problem,
@@ -403,9 +410,14 @@ for(u in unique(simData$iteration)){
       as.numeric(abs(bac$mcmcsummary["S_msy","Rhat"]-1)>.1)),each=nrow(df)),
       as.numeric(abs(btva$mcmcsummary[grep("S_msy",rownames(btva$mcmcsummary)),"Rhat"]-1)>.1),
       as.numeric(abs(btvb$mcmcsummary[grep("S_msy",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1),
-      as.numeric(abs(btvab$mcmcsummary[grep("S_msy",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1))
+      as.numeric(abs(btvab$mcmcsummary[grep("S_msy",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmma$mcmcsummary[grep("S_msy_t",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmma$mcmcsummary[grep("S_msy_wt",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmmb$mcmcsummary[grep("S_msy_t",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmmb$mcmcsummary[grep("S_msy_wt",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmmab$mcmcsummary[grep("S_msy_t",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmmab$mcmcsummary[grep("S_msy_wt",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1))
   ) 
-  
   dfsmsy$pbias<- ((dfsmsy$est-dfsmsy$sim)/dfsmsy$sim)*100
 
   rmsesmsy<-aggregate((dfsmsy$est-dfsmsy$sim)^2, list(model=dfsmsy$model,method=dfsmsy$method), function(x)sqrt(mean(x)))
@@ -426,7 +438,13 @@ for(u in unique(simData$iteration)){
       as.numeric(abs(bac$mcmcsummary["S_msy","Rhat"]-1)>.1),
       sum(as.numeric(abs(btva$mcmcsummary[grep("S_msy",rownames(btva$mcmcsummary)),"Rhat"]-1)>.1)),
       sum(as.numeric(abs(btvb$mcmcsummary[grep("S_msy",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1)),
-      sum(as.numeric(abs(btvab$mcmcsummary[grep("S_msy",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)))
+      sum(as.numeric(abs(btvab$mcmcsummary[grep("S_msy",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmma$mcmcsummary[grep("S_msy_t",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmma$mcmcsummary[grep("S_msy_wt",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmb$mcmcsummary[grep("S_msy_t",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmb$mcmcsummary[grep("S_msy_wt",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmab$mcmcsummary[grep("S_msy_t",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmab$mcmcsummary[grep("S_msy_wt",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)))
       
   
 
@@ -445,6 +463,14 @@ for(u in unique(simData$iteration)){
   sgen_tva<-NULL
   sgen_tvb<-NULL
   sgen_tvab<-NULL
+
+  sgen_hmma_regime<-NULL
+  sgen_hmma_average<-NULL
+  sgen_hmmb_regime<-NULL
+  sgen_hmmb_average<-NULL
+  sgen_hmmab_regime<-NULL
+  sgen_hmmab_average<-NULL
+
   for(j in seq_len(nrow(dat))){
     #tva
     atva<-btva$samples[grep(paste0("log_a\\[",j,"\\]"),btva$samples$parameters),]
@@ -455,7 +481,7 @@ for(u in unique(simData$iteration)){
       Smsy=smsytva$value)))
   
 
-  #tvb
+    #tvb
     betatvb <- btvb$samples[grep(paste0("^b\\[",j,"\\]"),btvb$samples$parameters),]
     smsytvb<-btvb$samples[grep(paste0("S_msy\\[",j,"\\]"),btvb$samples$parameters),]
 
@@ -472,7 +498,63 @@ for(u in unique(simData$iteration)){
       b=betatvab$value,Smsy=smsytvab$value)))
 
     #hmma
+    #regime
+    ahmma <- bhmma$samples[grep(paste0("log_a_t\\[",j,"\\]"),bhmma$samples$parameters),]
+    smsyhmma <- bhmma$samples[grep(paste0("S_msy_t\\[",j,"\\]"),bhmma$samples$parameters),]
     
+    sgen_hmma_regime[j]<-median(unlist(mapply(sGenSolver,a=ahmma$value,
+      b=bhmma$samples[bhmma$samples$parameters=="b","value"],
+      Smsy=smsyhmma$value)))
+    
+    #average
+    ahmmaw<-bhmma$samples[grep(paste0("log_a_wt\\[",j,"\\]"),bhmma$samples$parameters),]
+    smsyhmmaw<-bhmma$samples[grep(paste0("S_msy_wt\\[",j,"\\]"),bhmma$samples$parameters),]
+
+    sgen_hmma_average[j]<-median(unlist(mapply(sGenSolver,a=ahmmaw$value,
+      b=bhmma$samples[bhmma$samples$parameters=="b","value"],
+      Smsy=smsyhmmaw$value)))
+   
+    #hmmb
+    #regime
+    betahmmb<-bhmmb$samples[grep(paste0("b_t\\[",j,"\\]"),bhmmb$samples$parameters),]
+    smsyhmmb<-bhmmb$samples[grep(paste0("S_msy_t\\[",j,"\\]"),bhmmb$samples$parameters),]
+    
+    sgen_hmmb_regime[j]<-median(unlist(mapply(sGenSolver,
+      a=bhmmb$samples[bhmmb$samples$parameters=="log_a","value"],
+      b=betahmmb$value,
+      Smsy=smsyhmmb$value)))
+    
+    #average
+    betahmmbw<-bhmmb$samples[grep(paste0("b_wt\\[",j,"\\]"),bhmmb$samples$parameters),]
+    smsyhmmbw<-bhmmb$samples[grep(paste0("S_msy_wt\\[",j,"\\]"),bhmmb$samples$parameters),]
+
+    sgen_hmmb_average[j]<-median(unlist(mapply(sGenSolver,
+      a=bhmmb$samples[bhmmb$samples$parameters=="log_a","value"],
+      b=betahmmbw$value,
+      Smsy=smsyhmmbw$value)))
+
+    #hmmab
+    #regime
+    ahmmab <- bhmmab$samples[grep(paste0("log_a_t\\[",j,"\\]"),bhmmab$samples$parameters),]
+    betahmmab<-bhmmab$samples[grep(paste0("b_t\\[",j,"\\]"),bhmmab$samples$parameters),]
+    smsyhmmab<-bhmmab$samples[grep(paste0("S_msy_t\\[",j,"\\]"),bhmmab$samples$parameters),]
+    
+    sgen_hmmab_regime[j]<-median(unlist(mapply(sGenSolver,
+      a=ahmmab$value,
+      b=betahmmab$value,
+      Smsy=smsyhmmab$value)))
+    
+    #average
+    ahmmabw<-bhmmab$samples[grep(paste0("log_a_wt\\[",j,"\\]"),bhmmab$samples$parameters),]
+    betahmmabw<-bhmmab$samples[grep(paste0("b_wt\\[",j,"\\]"),bhmmab$samples$parameters),]
+    smsyhmmabw<-bhmmab$samples[grep(paste0("S_msy_wt\\[",j,"\\]"),bhmmab$samples$parameters),]
+
+    sgen_hmmab_average[j]<-median(unlist(mapply(sGenSolver,
+      a=ahmmabw$value,
+      b=betahmmabw$value,
+      Smsy=smsyhmmabw$value)))
+
+     
   }
  
 
@@ -481,12 +563,13 @@ for(u in unique(simData$iteration)){
 
   dfsgen <- data.frame(parameter="sgen",
     iteration=u,
-    method=rep(c(rep("MLE",11),rep("MCMC",5)),each=nrow(df)),
+    method=rep(c(rep("MLE",11),rep("MCMC",11)),each=nrow(df)),
     model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
       "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average",
-      "simple_b","autocorr_b","rwa_b","rwb_b","rwab_b"),each=nrow(df)),
+      "simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
+      "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average"),each=nrow(df)),
     by=rep(dat$year,16),
-    sim=rep(unlist(mapply(sGenSolver,a=dat$alpha,Smsy=smsysim, b=dat$beta)),12),
+    sim=rep(unlist(mapply(sGenSolver,a=dat$alpha,Smsy=smsysim, b=dat$beta)),22),
     est=c(unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple"],Smsy=dfsmsy$est[dfsmsy$model=="simple"], b=1/dfsmax$est[dfsmax$model=="simple"])),
         unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="autocorr"],Smsy=dfsmsy$est[dfsmsy$model=="autocorr"], b=1/dfsmax$est[dfsmax$model=="autocorr"])),
         unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwa"],Smsy=dfsmsy$est[dfsmsy$model=="rwa"], b=1/dfsmax$est[dfsmax$model=="rwa"])),
@@ -502,7 +585,13 @@ for(u in unique(simData$iteration)){
         sgen_bac,
         sgen_tva,
         sgen_tvb,
-        sgen_tvab
+        sgen_tvab,
+        sgen_hmma_regime,
+        sgen_hmma_average,
+        sgen_hmmb_regime,
+        sgen_hmmb_average,
+        sgen_hmmab_regime,
+        sgen_hmmab_average
         ),
      convergence=c(rep(c(p$model$convergence + p$conv_problem,
       pac$model$convergence + pac$conv_problem,
@@ -525,7 +614,20 @@ for(u in unique(simData$iteration)){
       (as.numeric(abs(btvb$mcmcsummary["log_a","Rhat"]-1)>.1)+
           as.numeric(abs(btvb$mcmcsummary[grep("^b\\[",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1)),
       (as.numeric(abs(btvab$mcmcsummary[grep("log_a\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)+
-          as.numeric(abs(btvab$mcmcsummary[grep("^b\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1))))
+          as.numeric(abs(btvab$mcmcsummary[grep("^b\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)),
+      (as.numeric(abs(bhmma$mcmcsummary[grep("log_a_t\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1)+
+          as.numeric(abs(bhmma$mcmcsummary["b","Rhat"]-1)>.1)),
+      (as.numeric(abs(bhmma$mcmcsummary[grep("log_a_wt\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1)+
+          as.numeric(abs(bhmma$mcmcsummary["b","Rhat"]-1)>.1)),    
+      (as.numeric(abs(bhmmb$mcmcsummary[grep("b_t\\[",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1)+
+          as.numeric(abs(bhmmb$mcmcsummary["log_a","Rhat"]-1)>.1)),
+      (as.numeric(abs(bhmmb$mcmcsummary[grep("b_wt\\[",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1)+
+          as.numeric(abs(bhmmb$mcmcsummary["log_a","Rhat"]-1)>.1)),
+      (as.numeric(abs(bhmmab$mcmcsummary[grep("log_a_t\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)+
+       as.numeric(abs(bhmmab$mcmcsummary[grep("b_t\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)),
+      (as.numeric(abs(bhmmab$mcmcsummary[grep("log_a_wt\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)+
+        as.numeric(abs(bhmmab$mcmcsummary[grep("b_wt\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1))
+      ))
 
    
 
@@ -561,34 +663,35 @@ for(u in unique(simData$iteration)){
 
     dfumsy<- data.frame(parameter="umsy",
     iteration=u,
-    method=rep(c(rep("MLE",10),rep("MCMC",1)),each=nrow(df)),
+    method=rep(c(rep("MLE",10),rep("MCMC",10)),each=nrow(df)),
     model=rep(c("simple","autocorr","rwa","rwb","rwab","hmma_regime","hmma_average",
-      "hmmb_regime","hmmab_regime","hmmab_average","simple_b"),each=nrow(df)),
-    by=rep(dat$year,11),
-    sim=rep((.5 * dat$alpha - 0.07 * dat$alpha^2),11),
-    est=c(rep((1 - gsl::lambert_W0(exp(1 - p$alpha))), nrow(df)),
-          rep((1 - gsl::lambert_W0(exp(1 - pac$alpha))), nrow(df)),
-          (1 - gsl::lambert_W0(exp(1 - ptva$alpha))),
-          rep((1 - gsl::lambert_W0(exp(1 - ptvb$alpha))), nrow(df)),
-          (1 - gsl::lambert_W0(exp(1 - ptvab$alpha))),
-          (1 - gsl::lambert_W0(exp(1 - phmma$alpha[phmma$regime]))),
-          (1 - gsl::lambert_W0(exp(1 - c(phmma$alpha%*%phmma$probregime)))),
-          rep((1 - gsl::lambert_W0(exp(1 - phmmb$alpha))), nrow(df)),
-          (1 - gsl::lambert_W0(exp(1 - phmm$alpha[phmm$regime]))),
-          (1 - gsl::lambert_W0(exp(1 - c(phmm$alpha%*%phmm$probregime)))),
-          rep((1 - gsl::lambert_W0(exp(1 - b$alpha))),nrow(df)),
-          rep((1 - gsl::lambert_W0(exp(1 - bac$alpha))),nrow(df))),
-    #c(rep(.5 * p$alpha - 0.07 * p$alpha^2,nrow(df)),
-    #      rep(.5 * pac$alpha - 0.07 * pac$alpha^2,nrow(df)),
-    #      .5 * ptva$alpha - 0.07 * ptva$alpha^2,
-    #      rep(.5 * ptvb$alpha - 0.07 * ptvb$alpha^2,nrow(df)),
-    #      .5 * ptvab$alpha - 0.07 * ptvab$alpha^2,
-    #      .5 * phmma$alpha[phmma$regime] - 0.07 * phmma$alpha[phmma$regime]^2,
-    #      .5 * c(phmma$alpha%*%phmma$probregime) - 0.07 * c(phmma$alpha%*%phmma$probregime)^2,
-    #      rep(.5 * phmmb$alpha - 0.07 * phmmb$alpha^2,nrow(df)),
-    #      .5 * phmm$alpha[phmm$regime] - 0.07 * phmm$alpha[phmm$regime]^2,
-    #      .5 * c(phmm$alpha%*%phmm$probregime) - 0.07 * c(phmm$alpha%*%phmm$probregime)^2),
-     convergence=rep(c(p$model$convergence + p$conv_problem,
+      "hmmb_regime","hmmab_regime","hmmab_average","simple","autocorr","rwa","rwb",
+      "rwab","hmma_regime","hmma_average","hmmb_regime","hmmab_regime",
+      "hmmab_average"),each=nrow(df)),
+    by=rep(dat$year,20),
+    sim=rep(umsySolver(dat$alpha),20),
+    est=c(rep(p$umsy, nrow(df)),
+          rep(pac$umsy, nrow(df)),
+           ptva$umsy,
+          rep(ptvb$umsy, nrow(df)),
+          ptvab$umsy,
+          phmma$umsy[phmma$regime],
+          phmma$umsy%*%phmma$probregime,
+          rep(phmmb$umsy,nrow(df)),
+          phmm$umsy[phmm$regime],
+          phmm$umsy%*%phmm$probregime,
+          rep(b$umsy,nrow(df)),
+          rep(bac$umsy,nrow(df)),
+          btva$umsy,
+          rep(btvb$umsy,nrow(df)),
+          btvab$umsy,
+          bhmma$umsy_regime,
+          bhmma$umsy_wgt,
+          rep(bhmmb$umsy,nrow(df)),
+          bhmmab$umsy_regime,
+          bhmmab$umsy_wgt
+          ),
+     convergence=c(rep(c(p$model$convergence + p$conv_problem,
       pac$model$convergence + pac$conv_problem,
       ptva$model$convergence+ ptva$conv_problem,
       ptvb$model$convergence+ ptvb$conv_problem,
@@ -598,10 +701,18 @@ for(u in unique(simData$iteration)){
       phmmb$model$convergence + phmmb$conv_problem,
       phmm$model$convergence + phmm$conv_problem,
       phmm$model$convergence + phmm$conv_problem,
-      as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1),
-      as.numeric(abs(bac$mcmcsummary["log_a","Rhat"]-1)>.1)
-      ),each=nrow(df))
-    )
+      as.numeric(abs(b$mcmcsummary["U_msy","Rhat"]-1)>.1),
+      as.numeric(abs(bac$mcmcsummary["U_msy","Rhat"]-1)>.1)
+      ),each=nrow(df)),
+      as.numeric(abs(btva$mcmcsummary[grep("U_msy\\[",rownames(btva$mcmcsummary)),"Rhat"]-1)>.1),
+      rep(as.numeric(abs(btvb$mcmcsummary[grep("U_msy",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1),each=nrow(df)),
+      as.numeric(abs(btvab$mcmcsummary[grep("U_msy\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmma$mcmcsummary[grep("U_msy_t\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmma$mcmcsummary[grep("U_msy_wt\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1),
+      rep(as.numeric(abs(bhmmb$mcmcsummary[grep("U_msy",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1),each=nrow(df)),
+      as.numeric(abs(bhmmab$mcmcsummary[grep("U_msy_t\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1),
+      as.numeric(abs(bhmmab$mcmcsummary[grep("U_msy_wt\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)  
+    ))
 
     dfumsy$pbias<- ((dfumsy$est-dfumsy$sim)/dfumsy$sim)*100
 
@@ -618,11 +729,18 @@ for(u in unique(simData$iteration)){
       phmmb$model$convergence + phmmb$conv_problem,
       phmm$model$convergence + phmm$conv_problem,
       phmm$model$convergence + phmm$conv_problem,
-      as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1),
-      as.numeric(abs(bac$mcmcsummary["log_a","Rhat"]-1)>.1)
+      as.numeric(abs(b$mcmcsummary["U_msy","Rhat"]-1)>.1),
+      as.numeric(abs(bac$mcmcsummary["U_msy","Rhat"]-1)>.1),
+      sum(as.numeric(abs(btva$mcmcsummary[grep("U_msy\\[",rownames(btva$mcmcsummary)),"Rhat"]-1)>.1)),
+      as.numeric(abs(btvb$mcmcsummary[grep("U_msy",rownames(btvb$mcmcsummary)),"Rhat"]-1)>.1),
+      sum(as.numeric(abs(btvab$mcmcsummary[grep("U_msy\\[",rownames(btvab$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmma$mcmcsummary[grep("U_msy_t\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmma$mcmcsummary[grep("U_msy_wt\\[",rownames(bhmma$mcmcsummary)),"Rhat"]-1)>.1)),
+      as.numeric(abs(bhmmb$mcmcsummary[grep("U_msy",rownames(bhmmb$mcmcsummary)),"Rhat"]-1)>.1),
+      sum(as.numeric(abs(bhmmab$mcmcsummary[grep("U_msy_t\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1)),
+      sum(as.numeric(abs(bhmmab$mcmcsummary[grep("U_msy_wt\\[",rownames(bhmmab$mcmcsummary)),"Rhat"]-1)>.1))     
       )
   
-
    rmse[[u]]<-rbind(rmsea,rmseb,rmsesig,rmsesmsy,rmsesgen,rmseumsy)
    simest[[u]]<-rbind(dfa,dfb,dfsig,dfsmsy,dfsgen,dfumsy)
 }
