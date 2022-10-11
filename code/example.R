@@ -478,15 +478,16 @@ for(u in unique(simData$iteration)){
     
     sgen_tva[j]<-median(unlist(mapply(sGenSolver,a=atva$value,
       b=btva$samples[btva$samples$parameters=="b","value"],
-      Smsy=smsytva$value)))
-  
+      Smsy=smsytva$value)),na.rm=T)
+
+   
 
     #tvb
     betatvb <- btvb$samples[grep(paste0("^b\\[",j,"\\]"),btvb$samples$parameters),]
     smsytvb<-btvb$samples[grep(paste0("S_msy\\[",j,"\\]"),btvb$samples$parameters),]
 
     sgen_tvb[j]<-median(unlist(mapply(sGenSolver,a=btvb$samples[btvb$samples$parameters=="log_a","value"],
-      b=betatvb$value,Smsy=smsytvb$value)))
+      b=betatvb$value,Smsy=smsytvb$value)),na.rm=T)
 
     
     #tvab    
@@ -495,7 +496,7 @@ for(u in unique(simData$iteration)){
     smsytvab<-btvab$samples[grep(paste0("S_msy\\[",j,"\\]"),btvab$samples$parameters),]
 
     sgen_tvab[j]<-median(unlist(mapply(sGenSolver,a=atvab$value,
-      b=betatvab$value,Smsy=smsytvab$value)))
+      b=betatvab$value,Smsy=smsytvab$value)),na.rm=T)
 
     #hmma
     #regime
@@ -504,7 +505,7 @@ for(u in unique(simData$iteration)){
     
     sgen_hmma_regime[j]<-median(unlist(mapply(sGenSolver,a=ahmma$value,
       b=bhmma$samples[bhmma$samples$parameters=="b","value"],
-      Smsy=smsyhmma$value)))
+      Smsy=smsyhmma$value)),na.rm=T)
     
     #average
     ahmmaw<-bhmma$samples[grep(paste0("log_a_wt\\[",j,"\\]"),bhmma$samples$parameters),]
@@ -512,7 +513,7 @@ for(u in unique(simData$iteration)){
 
     sgen_hmma_average[j]<-median(unlist(mapply(sGenSolver,a=ahmmaw$value,
       b=bhmma$samples[bhmma$samples$parameters=="b","value"],
-      Smsy=smsyhmmaw$value)))
+      Smsy=smsyhmmaw$value)),na.rm=T)
    
     #hmmb
     #regime
@@ -522,7 +523,7 @@ for(u in unique(simData$iteration)){
     sgen_hmmb_regime[j]<-median(unlist(mapply(sGenSolver,
       a=bhmmb$samples[bhmmb$samples$parameters=="log_a","value"],
       b=betahmmb$value,
-      Smsy=smsyhmmb$value)))
+      Smsy=smsyhmmb$value)),na.rm=T)
     
     #average
     betahmmbw<-bhmmb$samples[grep(paste0("b_wt\\[",j,"\\]"),bhmmb$samples$parameters),]
@@ -531,7 +532,7 @@ for(u in unique(simData$iteration)){
     sgen_hmmb_average[j]<-median(unlist(mapply(sGenSolver,
       a=bhmmb$samples[bhmmb$samples$parameters=="log_a","value"],
       b=betahmmbw$value,
-      Smsy=smsyhmmbw$value)))
+      Smsy=smsyhmmbw$value)),na.rm=T)
 
     #hmmab
     #regime
@@ -542,7 +543,7 @@ for(u in unique(simData$iteration)){
     sgen_hmmab_regime[j]<-median(unlist(mapply(sGenSolver,
       a=ahmmab$value,
       b=betahmmab$value,
-      Smsy=smsyhmmab$value)))
+      Smsy=smsyhmmab$value)),na.rm=T)
     
     #average
     ahmmabw<-bhmmab$samples[grep(paste0("log_a_wt\\[",j,"\\]"),bhmmab$samples$parameters),]
@@ -552,7 +553,7 @@ for(u in unique(simData$iteration)){
     sgen_hmmab_average[j]<-median(unlist(mapply(sGenSolver,
       a=ahmmabw$value,
       b=betahmmabw$value,
-      Smsy=smsyhmmabw$value)))
+      Smsy=smsyhmmabw$value)),na.rm=T)
 
      
   }
@@ -570,19 +571,41 @@ for(u in unique(simData$iteration)){
       "hmmb_regime","hmmb_average","hmmab_regime","hmmab_average"),each=nrow(df)),
     by=rep(dat$year,16),
     sim=rep(unlist(mapply(sGenSolver,a=dat$alpha,Smsy=smsysim, b=dat$beta)),22),
-    est=c(unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple"],Smsy=dfsmsy$est[dfsmsy$model=="simple"], b=1/dfsmax$est[dfsmax$model=="simple"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="autocorr"],Smsy=dfsmsy$est[dfsmsy$model=="autocorr"], b=1/dfsmax$est[dfsmax$model=="autocorr"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwa"],Smsy=dfsmsy$est[dfsmsy$model=="rwa"], b=1/dfsmax$est[dfsmax$model=="rwa"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwb"],Smsy=dfsmsy$est[dfsmsy$model=="rwb"], b=1/dfsmax$est[dfsmax$model=="rwb"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwab"],Smsy=dfsmsy$est[dfsmsy$model=="rwab"], b=1/dfsmax$est[dfsmax$model=="rwab"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmma_regime"], b=1/dfsmax$est[dfsmax$model=="hmma_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_average"],Smsy=dfsmsy$est[dfsmsy$model=="hmma_average"], b=1/dfsmax$est[dfsmax$model=="hmma_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmb_regime"], b=1/dfsmax$est[dfsmax$model=="hmmb_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmb_average"], b=1/dfsmax$est[dfsmax$model=="hmmb_average"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_regime"],Smsy=dfsmsy$est[dfsmsy$model=="hmmab_regime"], b=1/dfsmax$est[dfsmax$model=="hmmab_regime"])),
-        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_average"],Smsy=dfsmsy$est[dfsmsy$model=="hmmab_average"], b=1/dfsmax$est[dfsmax$model=="hmmab_average"])),
-        sgen_b,
-        sgen_bac,
+    est=c(unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="simple"&dfa$method=="MLE"],
+             Smsy=dfsmsy$est[dfsmsy$model=="simple"&dfsmsy$method=="MLE"], 
+             b=1/dfsmax$est[dfsmax$model=="simple"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="autocorr"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="autocorr"&dfsmsy$method=="MLE"], 
+          b=1/dfsmax$est[dfsmax$model=="autocorr"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwa"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="rwa"&dfsmsy$method=="MLE"], 
+          b=1/dfsmax$est[dfsmax$model=="rwa"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwb"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="rwb"&dfsmsy$method=="MLE"], 
+          b=1/dfsmax$est[dfsmax$model=="rwb"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="rwab"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="rwab"&dfsmsy$method=="MLE"], 
+          b=1/dfsmax$est[dfsmax$model=="rwab"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_regime"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="hmma_regime"&dfsmsy$method=="MLE"], 
+          b=1/dfsmax$est[dfsmax$model=="hmma_regime"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmma_average"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="hmma_average"&dfsmsy$method=="MLE"], 
+          b=1/dfsmax$est[dfsmax$model=="hmma_regime"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="hmmb_regime"&dfsmsy$method=="MLE"],
+           b=1/dfsmax$est[dfsmax$model=="hmmb_regime"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmb_regime"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="hmmb_average"&dfsmsy$method=="MLE"], 
+          b=1/dfsmax$est[dfsmax$model=="hmmb_average"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_regime"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="hmmab_regime"&dfsmsy$method=="MLE"], 
+          b=1/dfsmax$est[dfsmax$model=="hmmab_regime"&dfsmax$method=="MLE"])),
+        unlist(mapply(sGenSolver,a=dfa$est[dfa$model=="hmmab_average"&dfa$method=="MLE"],
+          Smsy=dfsmsy$est[dfsmsy$model=="hmmab_average"&dfsmsy$method=="MLE"],
+           b=1/dfsmax$est[dfsmax$model=="hmmab_average"&dfsmax$method=="MLE"])),
+        rep(sgen_b,nrow(df)),
+        rep(sgen_bac,nrow(df)),
         sgen_tva,
         sgen_tvb,
         sgen_tvab,
@@ -607,8 +630,8 @@ for(u in unique(simData$iteration)){
       sum(as.numeric(abs(b$mcmcsummary["log_a","Rhat"]-1)>.1),
           as.numeric(abs(b$mcmcsummary["b","Rhat"]-1)>.1)),
       sum(as.numeric(abs(bac$mcmcsummary["log_a","Rhat"]-1)>.1),
-          as.numeric(abs(bac$mcmcsummary["b","Rhat"]-1)>.1)))
-      ,each=nrow(df)),
+          as.numeric(abs(bac$mcmcsummary["b","Rhat"]-1)>.1))),
+      each=nrow(df)),
       (as.numeric(abs(btva$mcmcsummary[grep("log_a\\[",rownames(btva$mcmcsummary)),"Rhat"]-1)>.1)+
           as.numeric(abs(btva$mcmcsummary["b","Rhat"]-1)>.1)),
       (as.numeric(abs(btvb$mcmcsummary["log_a","Rhat"]-1)>.1)+
