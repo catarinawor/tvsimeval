@@ -9,7 +9,7 @@
 
 #or locally
 
-#setwd("C:\\Users\\worc\\Documents\\LRP\\samSim\\R")
+#setwd("C:\\Users\\worc\\Documents\\timevar\\samSim\\R")
 
 
 devtools::document()
